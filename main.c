@@ -54,9 +54,9 @@ int main()
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       tlp_dump_current_soln(&mx2);
-      tlp_soln(&mx2, mxsol);
     }
     CHECK;
+    tlp_soln(&mx2, mxsol);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
@@ -88,9 +88,9 @@ int main()
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       tlp_dump_current_soln(&mx2);
-      tlp_soln(&mx2, mxsol);
     }
     CHECK;
+    tlp_soln(&mx2, mxsol);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
@@ -123,9 +123,9 @@ int main()
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
       tlp_dump_current_soln(&mx2);
-      tlp_soln(&mx2, mxsol);
     }
     CHECK;
+    tlp_soln(&mx2, mxsol);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
@@ -157,9 +157,9 @@ int main()
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
       tlp_dump_current_soln(&mx2);
-      tlp_soln(&mx2, mxsol);
     }
     CHECK;
+    tlp_soln(&mx2, mxsol);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
@@ -191,9 +191,9 @@ int main()
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
       tlp_dump_current_soln(&mx2);
-      tlp_soln(&mx2, mxsol);
     }
     CHECK;
+    tlp_soln(&mx2, mxsol);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
