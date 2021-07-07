@@ -24,6 +24,50 @@ int main()
 
   printf("----- new problem\n");
   {
+    // https://www.brainkart.com/article/Special-Cases-in-the-Simplex-Method_11207/
+    // PROBLEM SET 3.5A, Problem #2
+    // degenerate/oscillating
+
+    const char* vars[] = { "x0", "x1" };
+
+    //  x0   x1
+    double mxobj[] = {
+      3., 2.
+    };
+
+    //  x0   x1    rhs
+    double mxLE[] = {
+      4., 3., 12.,
+      4., -1., 8.,
+      4., 1., 8.,
+    };
+
+    //  x0   x1    rhs
+    double mxEQ[] = {
+      0., 0., 0.
+    };
+
+    //  x0    x1   value-of-obj-fxn
+    double mxsol[] = { 0.,  0.,  0. };
+    double mxver[] = { 0.,  4.,  6. };
+
+    rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 3, mxEQ, 0, (const char**)&vars); CHECK;
+    printf("%s\n", mx2.bMaxProblem ? "Maximize" : "Minimize");
+    tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
+    while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
+    {
+      printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
+      tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
+      tlp_dump_current_soln(&mx2);
+    }
+    CHECK;
+    tlp_soln(&mx2, mxsol);
+    rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
+    rc = tlp_fini(&mx2); CHECK;
+  }
+
+  printf("----- new problem\n");
+  {
     const char* vars[] = { "x0", "x1" };
 
     //  x0   x1
