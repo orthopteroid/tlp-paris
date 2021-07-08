@@ -345,12 +345,6 @@ tlp_pivot(
   // reduce mx by v * v1 for all rows except the pivot row
   if( (rc = tlp_mxsubmul( pInfo, pivRow, pivCol )) ) return rc;
 
-  // the caller may be able to determine if the pivoting is oscillating
-  // by looking either at the pattern of iVarEnters and iVarLeaves. At
-  // this point it may be possible to use a hash of iVarEnters and
-  // iVarLeaves to apply a perturbation to the rhs before the next
-  // pivot.
-
   // todo: write a routine that will calculate sum( fabs( infeasibilities ) )
   // so that the caller can decide to terminate early if value <= epsilon.
 
@@ -389,7 +383,7 @@ tlp_setup_max(
   pInfo->fMinNeg = -pInfo->fMin;
   pInfo->fZero = 1.0e-10;
   pInfo->szVars = szVars;
-  pInfo->iIter = 0;
+  pInfo->iIter = -1;
   pInfo->iVarEnters = TLP_BADINDEX;
   pInfo->iVarLeaves = TLP_BADINDEX;
 
@@ -478,7 +472,7 @@ tlp_setup_min(
   pInfo->fMinNeg = -pInfo->fMin;
   pInfo->fZero = 1.0e-10;
   pInfo->szVars = szVars;
-  pInfo->iIter = 0;
+  pInfo->iIter = -1;
   pInfo->iVarEnters = TLP_BADINDEX;
   pInfo->iVarLeaves = TLP_BADINDEX;
 

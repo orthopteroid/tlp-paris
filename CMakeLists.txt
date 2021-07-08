@@ -9,6 +9,7 @@ set(CMAKE_C_STANDARD 11)
 include_directories(.)
 
 add_executable(tinylp
-        tinylp.c
+        tinylp.c tinylp.h
+        analysis.c analysis.h
         main.c
-        tinylp.h)
+        )

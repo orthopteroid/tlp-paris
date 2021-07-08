@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "tinylp.h"
+#include "analysis.h"
 
 #define CHECK \
   do { \
@@ -18,6 +19,7 @@
 
 int main()
 {
+  struct ELAVHODInfo htlod;
   struct MXInfo mx2;
   TLP_RCCODE rc;
   TLP_UINT e, r, c;
@@ -54,16 +56,21 @@ int main()
     rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 3, mxEQ, 0, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaxProblem ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
+    elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
     while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
     {
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       tlp_dump_current_soln(&mx2);
+      elavhod_update( &mx2, &htlod );
+      //elavhod_dump_history(&mx2, &htlod);
+      if( elavhod_detect( &mx2, &htlod ) ) { printf("oscillation detected\n"); rc = 0; break; }
     }
     CHECK;
     tlp_soln(&mx2, mxsol);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
+    elavhod_fin( &mx2, &htlod  );
   }
 
   printf("----- new problem\n");
@@ -93,16 +100,21 @@ int main()
     rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 2, mxEQ, 1, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaxProblem ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
+    elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
     while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
     {
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       tlp_dump_current_soln(&mx2);
+      elavhod_update( &mx2, &htlod );
+      //elavhod_dump_history(&mx2, &htlod);
+      if( elavhod_detect( &mx2, &htlod ) ) { printf("oscillation detected\n"); rc = 0; break; }
     }
     CHECK;
     tlp_soln(&mx2, mxsol);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
+    elavhod_fin( &mx2, &htlod  );
   }
 
   printf("----- new problem\n");
