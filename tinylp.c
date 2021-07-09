@@ -80,30 +80,27 @@ void tlp_dump_config( struct MXInfo* pInfo )
 
 void tlp_dump_active_vars( struct MXInfo* pInfo )
 {
-  TLP_UINT r, c;
+  TLP_UINT v;
 
-  for (r = 0; r < pInfo->iConstraints; r++) {
-    printf("%d ", pInfo->pActiveVariables[r + 2]); // +2 skips M and Z rows
+  for (v = 0; v < pInfo->iConstraints; v++) {
+    printf("%d ", pInfo->pActiveVariables[ v ]);
   }
   putchar('\n');
 }
 
 void tlp_dump_current_soln( struct MXInfo* pInfo )
 {
-  TLP_UINT r, c;
+  TLP_UINT r, c, v;
 
   double val;
-  TLP_UINT* var = &pInfo->pActiveVariables[+2]; // +2 skips rows M and Z
   TLP_UINT rhscol = pInfo->iCols - 1;
 
-  for( int c = 0; c < pInfo->iDefiningvars; c++ )
+  for(v = 0; v < pInfo->iDefiningvars; v++ )
   {
     if( pInfo->bMaxProblem ) {
-      // read variable values from Z col
-      val = TBMX( var[ c ] + 1, rhscol ); // +1 skips row Z
+      val = TBMX( pInfo->pActiveVariables[ v ] + 1, rhscol ); // +1 skips row Z
     } else {
-      // read variable values from Z row
-      val = TBMX( +1, rhscol - var[ c ] ); // +1 skips row Z
+      val = TBMX( +1, rhscol - pInfo->pActiveVariables[ v ] ); // +1 skips row Z, review: -ve sign?
     }
     printf("%+10.4f", val);
   }
@@ -334,10 +331,14 @@ tlp_pivot(
   if( pivRow == TLP_BADINDEX ) return tlp_rc_encode(TLP_UNBOUNDED);
 
   // record entering/leaving variables
-  // pInfo->pActiveVariables[ pivRow ] leaves, pivCol enters
-  pInfo->iVarEnters = pivCol;
-  pInfo->iVarLeaves = pInfo->pActiveVariables[ pivRow ];
-  pInfo->pActiveVariables[ pivRow ] = pivCol;
+  pInfo->iVarEnters = pivCol; // review: missing -1 to convert col to var?
+  pInfo->iVarLeaves = pInfo->pActiveVariables[ pivRow -2 ]; // -2 converts row to var
+
+  // review: works
+  pInfo->pActiveVariables[ pivRow -2 ] = pivCol; // -2 converts row to var
+
+  // review: broken
+  //pInfo->pActiveVariables[ pInfo->iVarLeaves ] = pInfo->iVarEnters;
 
   // normalize row r1 by the pivot r1,c1
   if( (rc = tlp_rowdiv( pInfo, pivRow, pivCol )) ) return rc;
@@ -415,7 +416,7 @@ tlp_setup_max(
     for (c = 0; c < iVariables; c++) TBMX(constrRow, zCol + c) = LEMX(r, c);
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = LEMX(r, iVariables);
-    pInfo->pActiveVariables[constrRow] = slackCol;
+    pInfo->pActiveVariables[ constrRow -2 ] = slackCol; // -2 converts row to var
 
     slackCol++;
     constrRow++;
@@ -427,7 +428,7 @@ tlp_setup_max(
     for (c = 0; c < iVariables; c++) TBMX(constrRow, zCol + c) = EQMX(r, c);
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = EQMX(r, iVariables);
-    pInfo->pActiveVariables[constrRow] = slackCol;
+    pInfo->pActiveVariables[ constrRow -2 ] = slackCol; // -2 converts row to var
 
     // add an abstract variable with M = 1 for each of the EQ constraints to the objective function
     TBMX(mRow, slackCol) = 1.0;
@@ -508,7 +509,7 @@ tlp_setup_min(
     for (i = 0; i < iGEConstraints; i++) TBMX(constrRow, c + i) = GEMX(i, j); // transposed read
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = pOBJMX[ j ];
-    pInfo->pActiveVariables[constrRow] = slackCol;
+    pInfo->pActiveVariables[ constrRow -2 ] = slackCol; // -2 converts row to var
 
     slackCol++;
     constrRow++;
@@ -522,7 +523,7 @@ tlp_setup_min(
     for (i = 0; i < iEQConstraints; i++) TBMX(constrRow, c + i) = EQMX(i, r); // transposed read
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = pOBJMX[ r ];
-    pInfo->pActiveVariables[constrRow] = slackCol;
+    pInfo->pActiveVariables[ constrRow -2 ] = slackCol; // -2 converts row to var
 
     // add an abstract variable with M = 1 for each of the EQ constraints to the objective function
     TBMX(mRow, slackCol) = 1.0;
@@ -541,20 +542,19 @@ tlp_soln(
   double* pSOLMX
 )
 {
+  TLP_UINT v;
+
   if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
   if( !pInfo->pActiveVariables ) return tlp_rc_encode(TLP_ASSERT);
 
   TLP_UINT rhscol = pInfo->iCols - 1;
-  TLP_UINT* var = &pInfo->pActiveVariables[+2]; // +2 skips rows M and Z
 
   if( pInfo->bMaxProblem ) {
-    // read variable values from Z col
-    for( int c = 0; c < pInfo->iDefiningvars; c++ )
-        pSOLMX[ c ] = TBMX( var[ c ] + 1, rhscol ); // +1 skips row Z
+    for(v = 0; v < pInfo->iDefiningvars; v++ )
+        pSOLMX[ v ] = TBMX( pInfo->pActiveVariables[ v ] + 1, rhscol ); // +1 skips row Z
   } else {
-    // read variable values from Z row
-    for( int c = 0; c < pInfo->iDefiningvars; c++ )
-        pSOLMX[ c ] = TBMX( +1, rhscol - var[ c ] ); // +1 skips row Z
+    for(v = 0; v < pInfo->iDefiningvars; v++ )
+        pSOLMX[ v ] = TBMX( +1, rhscol - pInfo->pActiveVariables[ v ] ); // +1 skips row Z, review: -ve sign?
   }
   pSOLMX[ pInfo->iDefiningvars ] = TBMX(1, rhscol );
 
