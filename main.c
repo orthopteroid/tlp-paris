@@ -300,5 +300,48 @@ int main()
     rc = tlp_fini(&mx2); CHECK;
   }
 
+  printf("----- new problem\n");
+  {
+    // H&L p728
+    // n variables, m constraints
+    // obj = 5 * x1 + x2 - (x1 - x2) ^2
+    // obj = 5 * x1 + x2 - (   x1^2 - x1 * x2 - x2 * x1 + x2^2 )
+    // obj = 5 * x1 + x2 + ( - x1^2 + x1 * x2 + x2 * x1 - x2^2 )
+    // obj = A1 * x1 + A2 * x2 + Q11 * x1 ^2 + Q12 * x1 * x2 + Q21 * x2 * x1 + Q22 * x2 ^2
+    // st.  C1 * x1 + C2 * x2 <= 2, x1 >= 0, x2 >= 0
+
+    const char* vars[] = {"x1", "x2"};
+    //  x1   x2
+    double mxobj_l[] = {5., 1,};
+    //  x1   x2
+    double mxobj_q[] = {
+      +1., -1.,
+      -1., +1.,
+    };
+    //  x1   x3   rhs
+    double mxLE[] = {
+      1., 1., 2.,
+    };
+
+    // mx[ #variables + #constraints , #quadratics + #linears? + #lagranges + #slacks + #artificals + rhs ]
+    // x1   x2   x3    L1     y1  y2  z1  z2  rhs
+    // Q11  Q12  0   dG1/dx1  -1   0   1   0  rhs
+    // Q21  Q22  0   dG1/dx2   0  -1   0   1  rhs
+    // A1   A2   1                            rhs
+    // where x3, y1, y2 are slacks and z1, z2 are artificals
+// why is the slack x3 needed?
+    //
+    // minimize z1 + z2
+    // x1   x2   x3   L1   y1   y2    z1   z2   rhs
+    double mxMin[] = {
+      +1.,  -1.,  0.,  1., -1.,  0.,  1.,  0.,  5.,
+      -1.,  +1.,  0.,  1.,  0., -1.,  0.,  1.,  1.,
+       1.,   1.,  1.,  0.,  0.,  0.,  0.,  0.,  2.,
+    };
+    double mxMin_sol[] = { 0, 0, 0, };
+    double mxMin_ver[] = { 3./2., 1./2., 3., }; // x1 x2 y1
+    rc = tlp_mxequal(mxMin_ver, mxMin_sol, 1e-3, 5); CHECK;
+  }
+
   return 0;
 }
