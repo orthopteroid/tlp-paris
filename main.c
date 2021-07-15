@@ -26,6 +26,52 @@ int main()
 
   printf("----- new problem\n");
   {
+    // https://www.youtube.com/watch?v=gCs4YKiHIhg
+    // obj = 1 * x1 ^ 2 + 3 * x2 + 2 * x3 ^ 2
+
+    const char* vars[] = {"x1", "x2", "x3"};
+    //  x1   x2   x3
+    double mxobj_l[] = {0., 3., 0,};
+    //  x1   x2   x3
+    double mxobj_q[] = {
+      1., 0., 0.,
+      0., 0., 0.,
+      0., 0., 2.,
+    };
+    //  x1   x2   x3   rhs
+    double mxEQ[] = {
+      5., -1., -3., 2.,
+      3.,  1.,  2., 7.,
+    };
+
+    // mx[ # variables + # constraints , # constraints + # variables + rhs ]
+    //   L1        L2       x1    x2    x3     rhs
+    // -dG1/dx1  -dG2/dx1  dO/x1   0     0     rhs
+    // -dG1/dx2  -dG2/dx2    0    dO/x2  0     rhs
+    // -dG1/dx3  -dG2/dx3    0     0    dO/x3  rhs
+    //                      C11   C12   C13    rhs
+    //                      C21   C22   C23    rhs
+    // where L1, L2 are lagrangian lambdas
+    // solve for x1 and x2
+    // L1  L2  x1 x2 x3  rhs
+    double mxKKT[] = {
+      // lagrange coefs ?
+      -5., -3.,  2.,  0.,  0.,  0.,
+      +1., -1.,  0.,  0.,  0., -3.,
+      +3., -2.,  0.,  0.,  4.,  0.,
+      // constraints
+       0.,  0.,  5., -1., -3.,  2.,
+       0.,  0.,  3.,  1.,  2.,  7.,
+    };
+    double mxKKT_sol[] = { 0, 0, 0, 0, 0, };
+    double mxKKT_ver[] = { -0.7907, 2.2093, 1.3372, -0.4070, 1.6977 };
+    gauss( mxKKT_sol, mxKKT, 5 );
+    rc = tlp_mxequal(mxKKT_ver, mxKKT_sol, 1e-3, 5); CHECK;
+    printf("ok\n");
+  }
+
+  printf("----- new problem\n");
+  {
     // https://www.brainkart.com/article/Special-Cases-in-the-Simplex-Method_11207/
     // PROBLEM SET 3.5A, Problem #2
     // degenerate/oscillating

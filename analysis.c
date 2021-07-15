@@ -126,3 +126,135 @@ int test_is_concave(double* vecX, double* mxCoef, TLP_UINT size)
 
   return sum >= 0 ? 1 : 0;
 }
+
+#define GMX(r,c) mx[(r) * (n +1) + (c)]
+
+void gauss(double* soln, double* mx, int n)
+{
+  int * pivotrows = (int*)malloc(n * sizeof(int));
+  int * solnrows = (int*)malloc(n * sizeof(int));
+  for(int i=0; i<n; i++) pivotrows[i] = i;
+  for(int i=0; i<n; i++) solnrows[i] = -1;
+  int pivots = n;
+
+  for(int i=0; i<n; i++)
+  {
+    // for column i, find row with biggest pivot and remove it from pivot row collection
+    int t, p_pivot = 0, r_pivot = pivotrows[ p_pivot ];
+    double biggest_pivot = fabs(GMX( pivotrows[ p_pivot ], i ));
+    for(int p=0; p<pivots; p++)
+      if(fabs(GMX( pivotrows[ p ], i )) > fabs(biggest_pivot))
+        biggest_pivot = fabs(GMX( r_pivot = pivotrows[ p_pivot = p ], i ));
+    pivotrows[ p_pivot ] = pivotrows[ pivots-- -1 ];
+
+    // add this pivot row to the solution-decoder
+    solnrows[i] = r_pivot;
+
+    //if(biggest_pivot < 1e-10) continue;
+
+    // reduce non-pivot rows
+    for(int r=0; r<r_pivot; r++)
+      for(int c=n; c>=i; c--) // count down RTL from rhs
+        GMX( r, c ) -= GMX( r_pivot, c ) * GMX( r, i ) / GMX( r_pivot, i );
+    for(int r=r_pivot +1; r<n; r++)
+      for(int c=n; c>=i; c--) // count down RTL from rhs
+        GMX( r, c ) -= GMX( r_pivot, c ) * GMX( r, i ) / GMX( r_pivot, i );
+
+    // factor pivot row
+    for(int c=n; c>=i; c--) // count down RTL from rhs
+      GMX( r_pivot, c ) /= GMX( r_pivot, i );
+  }
+
+  // extract solution using indirect lookup through solution-decoder
+  for(int j=0; j<n; j++) soln[ j ] = GMX( solnrows[ j ], n);
+/*
+  for(int r=0; r<n; r++)
+    for(int c=0; c<n +1; c++)
+      printf("%15.8f%c", GMX(r,c), (c<n) ? ' ' : '\n' );
+  putchar('\n');
+  for(int j=0; j<n; j++) printf("%10.4f ", soln[j]);
+  putchar('\n');
+*/
+  free(pivotrows);
+  free(solnrows);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

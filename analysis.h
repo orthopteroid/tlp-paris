@@ -30,5 +30,6 @@ void elavhod_fin( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
 ///////////////
 
 int test_is_concave(double* vecX, double* mxCoef, TLP_UINT size);
+void gauss(double* soln, double* mx, int n);
 
 #endif // _ANALYSIS_H_
