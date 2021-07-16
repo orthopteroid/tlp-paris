@@ -428,7 +428,7 @@ tlp_setup_max(
     TBMX(constrRow, rhsCol) = EQMX(r, iVariables);
     pInfo->pActiveVariables[ constrRow -2 ] = slackCol -1; // -2 skips rows M and Z, -1 skips col Z
 
-    // add an abstract variable with M = 1 for each of the EQ constraints to the objective function
+    // add an artifical variable with M = 1 for each of the EQ constraints to the objective function
     TBMX(mRow, slackCol) = 1.0;
     if( (rc = tlp_rowsubmul(pInfo, mRow, slackCol, constrRow)) ) return rc; // was break
 
@@ -522,7 +522,7 @@ tlp_setup_min(
     TBMX(constrRow, rhsCol) = pOBJMX[ j ];
     pInfo->pActiveVariables[ constrRow -2 ] = slackCol -1; // -2 skips rows M and Z, -1 skips col Z
 
-    // add an abstract variable with M = 1 for each of the EQ constraints to the objective function
+    // add an artifical variable with M = 1 for each of the EQ constraints to the objective function
     TBMX(mRow, slackCol) = 1.0;
     if( (rc = tlp_rowsubmul(pInfo, mRow, slackCol, constrRow)) ) return rc; // review: break instead?
 
