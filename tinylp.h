@@ -21,13 +21,13 @@
 enum
 {
   TLP_OK=0,
-  TLP_UNFINISHED,
-  TLP_ASSERT,
-  TLP_GEOMETRY,
-  TLP_INVALID,
-  TLP_ZERO,
-  TLP_INFINITY,
-  TLP_UNBOUNDED,
+  TLP_UNFINISHED=1,
+  TLP_ASSERT=2,
+  TLP_GEOMETRY=3,
+  TLP_INVALID=4,
+  TLP_ZERO=5,
+  TLP_INFINITY=6,
+  TLP_UNBOUNDED=7,
 };
 
 #define TLP_BADINDEX ((1<<(TLP_RCBITS_IDX+1))-1)
@@ -99,28 +99,10 @@ tlp_setup_min(
   const char** szVars
 );
 
-TLP_RCCODE
-tlp_pivot(
-  struct MXInfo* pInfo
-);
-
-TLP_RCCODE
-tlp_soln(
-  struct MXInfo* pInfo,
-  double* pSOLMX
-);
-
-TLP_RCCODE
-tlp_mxequal(
-  const double* pA,
-  const double* pB,
-  const double fZero,
-  TLP_UINT n
-);
-
-TLP_RCCODE
-tlp_fini(
-  struct MXInfo* pInfo
-);
+TLP_RCCODE tlp_pivot( struct MXInfo* pInfo );
+TLP_RCCODE tlp_pivot_wolfe( struct MXInfo* pInfo );
+TLP_RCCODE tlp_soln( struct MXInfo* pInfo, double* pSOLMX );
+TLP_RCCODE tlp_mxequal( const double* pA, const double* pB, const double fZero, TLP_UINT n );
+TLP_RCCODE tlp_fini( struct MXInfo* pInfo );
 
 #endif /*_TINYLP_H_*/
