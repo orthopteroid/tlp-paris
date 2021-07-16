@@ -492,8 +492,8 @@ tlp_setup_min(
 
   // put obj fxn into the tableau (the Z row)
   TBMX(+1, 0) = 1.0; // +1 to skip row M
-  for (i = 0; i < iGEConstraints; i++) TBMX(+1, i +1) = -1 * GEMX(i, iVariables); // +1 to skip row M, +1 to skip col Z, -1 for ?
-  for (i = 0; i < iEQConstraints; i++) TBMX(+1, i +1) = -1 * EQMX(i, iVariables); // +1 to skip row M, +1 to skip col Z, -1 for ?
+  for (i = 0; i < iGEConstraints; i++) TBMX(+1, i +1) = -1 * GEMX(i, iVariables); // +1 to skip row M, +1 to skip col Z, -1 for minimize
+  for (i = 0; i < iEQConstraints; i++) TBMX(+1, i +1) = -1 * EQMX(i, iVariables); // +1 to skip row M, +1 to skip col Z, -1 for minimize
 
   TLP_UINT slackCol = pInfo->iDefiningvars + 1; // the defining variables will not be the initial basic variables, +1 to skip col Z
   TLP_UINT constrRow = +2; // +2 to skip rows M and Z
