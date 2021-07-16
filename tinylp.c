@@ -517,9 +517,9 @@ tlp_setup_min(
   {
     c = zCol + iGEConstraints; // start at next dest col
     // coefs, slack var and rhs
-    for (i = 0; i < iEQConstraints; i++) TBMX(constrRow, c + i) = EQMX(i, r); // transposed read
+    for (i = 0; i < iEQConstraints; i++) TBMX(constrRow, c + i) = EQMX(i, j); // transposed read
     TBMX(constrRow, slackCol) = 1.0;
-    TBMX(constrRow, rhsCol) = pOBJMX[ r ];
+    TBMX(constrRow, rhsCol) = pOBJMX[ j ];
     pInfo->pActiveVariables[ constrRow -2 ] = slackCol -1; // -2 skips rows M and Z, -1 skips col Z
 
     // add an abstract variable with M = 1 for each of the EQ constraints to the objective function
