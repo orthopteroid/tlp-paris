@@ -10,13 +10,7 @@
 #define TLP_UINT uint16_t
 #define TLP_RCCODE uint32_t
 
-// for some errors, knowing the relevant row/col that caused the problem
-// is desired. so, we pack the status, row and col into a single 32bit
-// value: 14 bits for each of row and col and 4 bits for error code.
-// This makes 16384 rows/cols (-1 for bad index) and 16 error/status codes.
-
-#define TLP_RCBITS_IDX 14
-#define TLP_RCBITS_STAT 4
+// error codes
 
 enum
 {
@@ -30,8 +24,18 @@ enum
   TLP_UNBOUNDED=7,
 };
 
-#define TLP_BADINDEX ((1<<(TLP_RCBITS_IDX+1))-1)
-#define TLP_RCUNFINISHED (TLP_UNFINISHED<<(2*TLP_RCBITS_IDX))
+// for some errors, knowing the relevant row/col that caused the problem
+// is desired. so, we pack the status, row and col into a single 32bit
+// value: 14 bits for each of row and col and 4 bits for error code.
+// This makes 16384 rows/cols (-1 for bad index) and 16 error/status codes.
+
+enum
+{
+  TLP_RCBITS_IDX=14,
+  TLP_RCBITS_STAT=4,
+  TLP_BADINDEX=((1<<(TLP_RCBITS_IDX+1))-1),
+  TLP_RCUNFINISHED=(TLP_UNFINISHED<<(2*TLP_RCBITS_IDX)),
+};
 
 #ifdef NDEBUG
 
