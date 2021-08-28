@@ -90,7 +90,7 @@ void tlp_dump_config( struct MXInfo* pInfo )
 {
   printf(
     "%d, %d %d, %d %d %d\n",
-    pInfo->bMaxProblem, pInfo->iCols, pInfo->iRows,
+    pInfo->bMaximize, pInfo->iCols, pInfo->iRows,
     pInfo->iConstraints, pInfo->iDefiningvars, pInfo->iSlackvars
   );
 }
@@ -99,7 +99,7 @@ void tlp_dump_active_vars( struct MXInfo* pInfo )
 {
   TLP_UINT v;
 
-  if( pInfo->bMaxProblem ) {
+  if( pInfo->bMaximize ) {
     for(v = 0; v < pInfo->iDefiningvars; v++ )
       printf("%d ", pInfo->pActiveVariables[ v ]);
   } else {
@@ -116,7 +116,7 @@ void tlp_dump_current_soln( struct MXInfo* pInfo )
   TLP_UINT rhscol = pInfo->iCols - 1;
   TLP_UINT  v;
 
-  if( pInfo->bMaxProblem ) {
+  if( pInfo->bMaximize ) {
     for(v = 0; v < pInfo->iDefiningvars; v++ )
       printf("%+10.4f", TBMX( pInfo->pActiveVariables[ v ] +2, rhscol ) ); // +2 skips rows M and Z
   } else {
@@ -385,7 +385,8 @@ tlp_setup_max(
   if( iLEConstraints && !pLEMX ) return tlp_rc_encode(TLP_ASSERT);
   if( iEQConstraints && !pEQMX ) return tlp_rc_encode(TLP_ASSERT);
 
-  pInfo->bMaxProblem = 1;
+  pInfo->bMaximize = 1;
+  pInfo->bQuadratic = 0;
   pInfo->iConstraints = iLEConstraints + iEQConstraints;
   pInfo->iDefiningvars = iVariables;
   pInfo->iSlackvars = iLEConstraints + iEQConstraints;
@@ -476,7 +477,8 @@ tlp_setup_min(
 
   // dual uses transpose, which switches constraints with variables and rhs with constraint consts
 
-  pInfo->bMaxProblem = 0; // 0=min
+  pInfo->bMaximize = 0;
+  pInfo->bQuadratic = 0;
   pInfo->iConstraints = iVariables;
   pInfo->iDefiningvars = iGEConstraints + iEQConstraints;
   pInfo->iSlackvars = iVariables;
@@ -567,7 +569,7 @@ tlp_soln(
 
   TLP_UINT rhscol = pInfo->iCols - 1;
 
-  if( pInfo->bMaxProblem ) {
+  if( pInfo->bMaximize ) {
     for(v = 0; v < pInfo->iDefiningvars; v++ )
       pSOLMX[ v ] = TBMX( pInfo->pActiveVariables[ v ] +2, rhscol ); // +2 skips rows M and Z
   } else {
