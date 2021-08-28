@@ -64,6 +64,7 @@ struct MXInfo
   // matrix structure
   TLP_UINT bMaxProblem;
   TLP_UINT iCols, iRows;
+  TLP_UINT iVars, iFirstvar;
   TLP_UINT* pActiveVariables;
   double* pMatrix;
   double fMin, fMinNeg;

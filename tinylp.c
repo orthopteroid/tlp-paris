@@ -7,6 +7,7 @@
 #include <float.h>
 #include <math.h>
 #include <limits.h>
+#include <assert.h>
 
 #include "tinylp.h"
 
@@ -20,6 +21,22 @@
 
 // access simplex tableau
 #define TBMX(_r, _c ) ( pInfo->pMatrix[ (_r) * pInfo->iCols + (_c) ] )
+
+// variable index validation
+#ifdef NDEBUG
+inline TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
+{
+  return i;
+}
+#else
+static TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
+{
+  assert(i <= pInfo->iVars);
+  assert(i >= pInfo->iFirstvar);
+  assert(i != TLP_BADINDEX);
+  return i;
+}
+#endif
 
 ///////////////////////////////////////
 
@@ -334,8 +351,8 @@ tlp_pivot(
 
   // record entering/leaving variables
   TLP_UINT rVarLeaves = pivRow -2; // -2 skips rows M and Z
-  pInfo->iVarEnters = pivCol -1; // -1 skips col Z
-  pInfo->iVarLeaves = pInfo->pActiveVariables[ rVarLeaves ];
+  pInfo->iVarEnters = VIMX( pInfo, pivCol -1 ); // -1 skips col Z
+  pInfo->iVarLeaves = VIMX( pInfo, pInfo->pActiveVariables[ rVarLeaves ] );
   pInfo->pActiveVariables[ rVarLeaves ] = pInfo->iVarEnters;
 
   // normalize row r1 by the pivot r1,c1
@@ -375,6 +392,8 @@ tlp_setup_max(
 
   pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
   pInfo->iCols = 1 + pInfo->iDefiningvars + pInfo->iSlackvars + 1; // Z, vars, slacks, RHS
+  pInfo->iVars = pInfo->iDefiningvars + pInfo->iSlackvars;
+  pInfo->iFirstvar = 0;
 
   pInfo->fMax = DBL_MAX;
   pInfo->fMaxNeg = -pInfo->fMax;
@@ -393,7 +412,7 @@ tlp_setup_max(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * (pInfo->iDefiningvars + pInfo->iSlackvars);
+  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
   pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
   memset(pInfo->pActiveVariables, 0, iBytes);
 
@@ -464,6 +483,8 @@ tlp_setup_min(
 
   pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
   pInfo->iCols = 1 + pInfo->iDefiningvars + pInfo->iSlackvars + 1; // Z, vars, slacks, RHS
+  pInfo->iVars = pInfo->iConstraints + 1; // +1 since this is indexed by row
+  pInfo->iFirstvar = 0;
 
   pInfo->fMax = DBL_MAX;
   pInfo->fMaxNeg = -pInfo->fMax;
@@ -482,7 +503,7 @@ tlp_setup_min(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * (pInfo->iConstraints + 1); // +1 since this is indexed by row
+  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
   pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
   memset(pInfo->pActiveVariables, 0, iBytes);
 
