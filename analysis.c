@@ -7,6 +7,7 @@
 #include <string.h>
 #include <math.h>
 #include <fcntl.h>
+#include <assert.h>
 
 #include "analysis.h"
 
@@ -179,58 +180,35 @@ void gauss(double* soln, double* mx, int n)
   free(solnrows);
 }
 
+///////////////
 
+#define DMX(r,c) mx1[(r) * size + (c)]
 
+// https://en.wikipedia.org/wiki/Bareiss_algorithm
+// https://www.ams.org/journals/mcom/1968-22-103/S0025-5718-1968-0226829-0/S0025-5718-1968-0226829-0.pdf
+// https://github.com/adolfos94/Bareiss-Algorithm/blob/master/index.js
+double determinant( double* mx, TLP_UINT size )
+{
+  size_t bytes = size * size * sizeof(double);
+  double* mx1 = (double*)malloc(bytes);
+  memcpy( mx1, mx, bytes );
 
+  for(int i=0; i<size; i++ )
+  {
+    double pivot = DMX( i, i );
+    double divider = i == 0 ? 1 : DMX( i - 1, i - 1 );
+    for(int row=0; row<size; row++ )
+    {
+      if(i == row) continue;
+      for(int col=i+1; col<size; col++ )
+        DMX( row, col )= ( pivot * DMX( row, col ) - DMX( row, i ) * DMX( i, col ) ) / divider;
+    }
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  double det = DMX( size - 1, size - 1 );
+  free(mx1);
+  return det;
+}
 
 
 
