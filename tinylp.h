@@ -68,7 +68,7 @@ struct MXInfo
   TLP_UINT bMaximize : 1, bQuadratic : 1;
   // matrix structure
   TLP_UINT iCols, iRows;
-  TLP_UINT iVars, iFirstvar;
+  TLP_UINT iVars;
   TLP_UINT* pActiveVariables;
   double* pMatrix;
   double fMin, fMinNeg;

@@ -32,7 +32,6 @@ inline TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
 static TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
 {
   assert(i <= pInfo->iVars);
-  assert(i >= pInfo->iFirstvar);
   assert(i != TLP_BADINDEX);
   return i;
 }
@@ -301,12 +300,26 @@ tlp_rowSmallestCoef(
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
+    // per H&L's restricted entry rule p687 s13.7 7th ed.
+    if( pInfo->bQuadratic )
+    {
+      // variables are numbered 0..N/2..N
+      // group 0<N/2 are complementary with group N/2<N
+      // avoid consideration of complementary variables for comparison and selection
+      TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
+      assert( (n & 0x01) == 0 ); // must be even
+      TLP_UINT v = c -1; // -1 converts from col to var#
+      for(TLP_UINT i = 0; i<n; i++ )
+        if( (pInfo->pActiveVariables[i] + n == c) || (c + n == pInfo->pActiveVariables[i]) )
+          goto skip;
+    }
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
     if( (v < *pV) )
     {
       *pV = v;
       *pC = c;
     }
+skip: ;
   }
 
   return tlp_rc_encode(TLP_OK);
@@ -394,7 +407,6 @@ tlp_setup_max(
   pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
   pInfo->iCols = 1 + pInfo->iDefiningvars + pInfo->iSlackvars + 1; // Z, vars, slacks, RHS
   pInfo->iVars = pInfo->iDefiningvars + pInfo->iSlackvars;
-  pInfo->iFirstvar = 0;
 
   pInfo->fMax = DBL_MAX;
   pInfo->fMaxNeg = -pInfo->fMax;
@@ -413,7 +425,7 @@ tlp_setup_max(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
+  iBytes = sizeof(TLP_UINT) * pInfo->iVars; // review: not iDefiningvars?
   pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
   memset(pInfo->pActiveVariables, 0, iBytes);
 
@@ -485,8 +497,7 @@ tlp_setup_min(
 
   pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
   pInfo->iCols = 1 + pInfo->iDefiningvars + pInfo->iSlackvars + 1; // Z, vars, slacks, RHS
-  pInfo->iVars = pInfo->iConstraints + 1; // +1 since this is indexed by row
-  pInfo->iFirstvar = 0;
+  pInfo->iVars = pInfo->iConstraints + 1; // +1 since this is indexed by row, REVIEW: +1 not needed?
 
   pInfo->fMax = DBL_MAX;
   pInfo->fMaxNeg = -pInfo->fMax;
@@ -505,7 +516,7 @@ tlp_setup_min(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
+  iBytes = sizeof(TLP_UINT) * pInfo->iVars; // review: not iConstraints?
   pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
   memset(pInfo->pActiveVariables, 0, iBytes);
 
