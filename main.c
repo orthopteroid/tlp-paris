@@ -24,6 +24,7 @@ int main()
   TLP_RCCODE rc;
   TLP_UINT e, r, c;
 
+#ifdef false
   printf("----- new problem\n");
   {
     // QLP maximization problem [H&L ed7 p684]
@@ -41,8 +42,8 @@ int main()
       1.,  2.,  30.,
     };
 
-    // KKT minimization of QLP problem [H&L ed7 p687]
-    // min F' == z1 + z2
+    // KKT minimization by QLP maximization of -F' problem [H&L ed7 p687]
+    // max -F' == z1 + z2
     // st Q1 == -2*Q[1,1]*x1 -2*Q[1,2]*x2 + G[1]*u1 - y1 = 15
     // st Q2 == -2*Q[2,1]*x1 -2*Q[2,2]*x2 + G[2]*u1 - y2 = 30
     // st G' == 1*x1 + 2*x2 + v1 = 30
@@ -51,8 +52,8 @@ int main()
     // rows = M + Z + #variables + #constraints
     // columns = Z + #quadratics + #lagranges + #slacks + #artificals + rhs
     // Z       x1      x2       u1   y1  y2  v1  z1  z2  rhs
-    // 0       0       0         0    0   0  0   0   0   rhs, M
-    // 1       0       0         0    0   0  0   1   1   rhs, Z
+    // 0       0       0         0    1   1  0   0   0   rhs, M
+    // 1       0       0         0    0   0  0   0   0   rhs, Z
     // 0  -2*Q[1,1] -2*Q[1,2]  G[1]  -1   0  0   1   0   rhs, Q1
     // 0  -2*Q[2,1] -2*Q[2,2]  G[2]   0  -1  0   0   1   rhs, Q2
     // 0     G[1]     G[2]                   1           rhs, G`
@@ -63,20 +64,21 @@ int main()
     //
     // minimize z1 + z2
     const char* vars[] = {"x1", "x2", "u1"};
-    double mxMin[] = {
+    double mx[] = {
     // Z    x1   x2    u1   y1   y2   v1   z1   z2  rhs
-       0.,  0.,   0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., // M
-/*??*/ -1.,  0.,   0.,  0.,  0.,  0.,  0.,  1.,  1.,  0., // Z, -1 to minimize
+// p688 shows mx differences... two phase method? p144
+       0.,  0.,   0.,  0.,  1.,  1.,  0.,  0.,  0.,  0., // M
+       1.,  0.,   0.,  0.,  0.,  0.,  0., -1., -1.,  0., // Z, * -1 to maximize
        0., +4.,  -4.,  1., -1.,  0.,  0.,  1.,  0., 15., // Q1
        0., -4.,  +8.,  2.,  0., -1.,  0.,  0.,  1., 30., // Q2
        0.,  1.,   2.,  0.,  0.,  0.,  1.,  0.,  0., 30., // G1'
     };
-    double mxMin_sol[] = { 0, 0, 0, };
-    double mxMin_ver[] = { 12., 9., 3., }; // x1 x2 u1
+    double mx_sol[] = { 0, 0, 0, };
+    double mx_ver[] = { 12., 9., 3., }; // x1 x2 u1
 
-    TLP_UINT activevars[ 3 ] = {0,1,2}; // but ranges 0..7, 7 for (3 * variables + 2 * constraints - 1)
-    struct MXInfo mx = {
-.bMaximize = 0,
+    TLP_UINT activevars[ 3 ] = {3,4,5}; // slacks, ranges 0..7 (3 * variables + 2 * constraints - 1)
+    struct MXInfo mxInfo = {
+.bMaximize = 1,
 .bQuadratic = 1,
 .iConstraints = 3, // variables + contraints: x1 x2 u1
 .iDefiningvars = 1, // constraints: G1'
@@ -85,7 +87,7 @@ int main()
 .iCols = +1 +6 +2 +1, // +Z + variables *3 + contraints *2 +rhs. *3 since every variable needs x,y,z. *2 since every constraint needs u,v
 .iVars = 3 /*+1 ??*/, // variables + contraints /*+1 as indexed by row ?? */
 .pActiveVariables = activevars,
-.pMatrix = mxMin,
+.pMatrix = mx,
 .fMin = 1e-99, .fMinNeg = -1e-99,
 .fMax = 1e99, .fMaxNeg = -1e99,
 .fZero = 1e-10,
@@ -97,12 +99,19 @@ int main()
       double d = determinant( &mxobj[2] /* read quadratic part only */, 2 );
 printf("%f\n",d);
       assert( d > 0. );
+      tlp_dump_tableau( &mxInfo, 0, 0 );
+      tlp_dump_active_vars( &mxInfo );
+      rc = tlp_pivot( &mxInfo );
+printf("rc = %X\n",tlp_rc_decode(rc));
+      tlp_dump_tableau( &mxInfo, 0, 0 );
+      tlp_dump_active_vars( &mxInfo );
     }
-//    tlp_dump_tableau(&mx, TLP_BADINDEX, TLP_BADINDEX);
-//    rc = tlp_mxequal(mxMin_ver, mxMin_sol, 1e-3, 5); CHECK;
+//    tlp_dump_tableau(&mxInfo, TLP_BADINDEX, TLP_BADINDEX);
+//    rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
   }
 
 return 0;
+#endif
 
   printf("----- new problem\n");
   {

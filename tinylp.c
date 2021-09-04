@@ -31,7 +31,6 @@ inline TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
 #else
 static TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
 {
-  assert(i <= pInfo->iVars);
   assert(i != TLP_BADINDEX);
   return i;
 }
@@ -300,27 +299,34 @@ tlp_rowSmallestCoef(
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
-    // per H&L's restricted entry rule p687 s13.7 7th ed.
-    if( pInfo->bQuadratic )
-    {
-      // variables are numbered 0..N/2..N
-      // group 0<N/2 are complementary with group N/2<N
-      // avoid consideration of complementary variables for comparison and selection
-      TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
-      assert( (n & 0x01) == 0 ); // must be even
-      TLP_UINT v = c -1; // -1 converts from col to var#
-      for(TLP_UINT i = 0; i<n; i++ )
-        if( (pInfo->pActiveVariables[i] + n == c) || (c + n == pInfo->pActiveVariables[i]) )
-          goto skip;
-    }
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
+//printf("%d %d %f\n", r, c, v);
     if( (v < *pV) )
     {
+      // per H&L's restricted entry rule p687 s13.7 7th ed.
+      if( pInfo->bQuadratic )
+      {
+        // variables are numbered 0..n..m, m=2n
+        // group 0<n are complementary with group n<m
+        // avoid consideration of complementary variables for comparison and selection
+        TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
+        TLP_UINT v = c -1; // -1 converts from col to var#
+        for(TLP_UINT i = 0; i<n; i++ )
+        {
+          printf("%d vs %d or %d vs %d\n",pInfo->pActiveVariables[i] + n, v, v + n, pInfo->pActiveVariables[i]);
+          if( (pInfo->pActiveVariables[i] + n == v) || (v + n == pInfo->pActiveVariables[i]) )
+          {
+            printf("skip\n");
+            goto skip;
+          }
+        }
+      }
       *pV = v;
       *pC = c;
     }
 skip: ;
   }
+//printf("out %d\n", *pC);
 
   return tlp_rc_encode(TLP_OK);
 }
