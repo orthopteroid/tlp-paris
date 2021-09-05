@@ -73,7 +73,7 @@ int main()
     };
     double mxsol[] = { 0, 0, 0, };
     double mxver[] = { 12., 9., 3., }; // x1 x2 u1
-    TLP_UINT activevars[ 3 ] = {2,6,7}; // u1 z1 z2, ranges 0..7 (3 * variables + 2 * constraints - 1)
+    TLP_UINT activevars[ 3 ] = {5,6,7}; // v1 z1 z2, ranges 0..7 (3 * variables + 2 * constraints - 1)
     struct MXInfo mxInfo = {
 .bMaximize = 1,
 .bQuadratic = 1,
@@ -106,6 +106,11 @@ if(1)    {
       double d = determinant( &mxobj[2] /* read quadratic part only */, 2 );
 printf("%f\n",d);
       assert( d > 0. );
+      tlp_dump_tableau( &mxInfo, 0, 0 );
+      tlp_dump_active_vars( &mxInfo );
+      rc = tlp_pivot( &mxInfo );
+printf("rc = %X\n",tlp_rc_decode(rc));
+      tlp_dump_current_soln(&mxInfo);
       tlp_dump_tableau( &mxInfo, 0, 0 );
       tlp_dump_active_vars( &mxInfo );
       rc = tlp_pivot( &mxInfo );

@@ -305,10 +305,15 @@ tlp_rowSmallestCoef(
     for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
     putchar('\n');
   }
-
+// ?? see pp688 table13.4
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
+    TLP_UINT var = c -1; // -1 converts from col to var
+    for(TLP_UINT i = 0; i<n; i++ )
+      if( (pInfo->pActiveVariables[i] == var) )
+        goto skip; // already in active set
+
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
     if( (v < *pV) )
     {
@@ -319,20 +324,18 @@ tlp_rowSmallestCoef(
         // group1 and group2 are complementary and have restricted entry
         // group3 are the aux vars from the obj function and are unrestricted
         // avoid consideration of complementary variables for comparison and selection
-        TLP_UINT var = c -1; // -1 converts from col to var
         if( var >= 2 * n ) goto accept; // group3
         for(TLP_UINT i = 0; i<n; i++ )
-          if( (pInfo->pActiveVariables[i] + n == var) || (var + n == pInfo->pActiveVariables[i]) )
-          {
-printf("skip variable: %d\n", var);
+          if( ((pInfo->pActiveVariables[i] + n) == var) || ((var + n) == pInfo->pActiveVariables[i]) )
             goto skip; // compliment detected in active set
-          }
       }
 accept:
       *pV = v;
       *pC = c;
     }
-skip: ;
+    continue;
+skip:
+    printf("skip variable: %d\n", var);
   }
 printf("selected variable: %d\n", *pC -1); // -1 converts col to var
 
