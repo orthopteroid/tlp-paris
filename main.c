@@ -133,7 +133,7 @@ printf("rc = %X\n",tlp_rc_decode(rc));
 //    rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
   }
 
-return 0;
+//return 0;
 //#endif
 
   printf("----- new problem\n");

@@ -305,36 +305,44 @@ tlp_rowSmallestCoef(
     for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
     putchar('\n');
   }
-// ?? see pp688 table13.4
+
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
     TLP_UINT var = c -1; // -1 converts from col to var
+
+    // trivially exclude checking variables that are already active
     for(TLP_UINT i = 0; i<n; i++ )
       if( (pInfo->pActiveVariables[i] == var) )
         goto skip; // already in active set
 
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
-    if( (v < *pV) )
+    if( (v >= *pV) ) continue; // skip larger values
+
+    // per H&L's restricted entry rule p687 s13.7 7th ed.
+    if( pInfo->bQuadratic )
     {
-      // per H&L's restricted entry rule p687 s13.7 7th ed.
-      if( pInfo->bQuadratic )
+      // variables are numbered into 3 groups: 0..group1..n..group2..m..group3..k, m=2n
+      // group1 and group2 are complementary and have restricted entry
+      // group3 are the aux vars from the obj function and are unrestricted
+      // avoid consideration of complementary variables for comparison and selection
+      if( var <= 2 * n ) // check if var in group1 or group2
       {
-        // variables are numbered into 3 groups: 0..group1..n..group2..m..group3..k, m=2n
-        // group1 and group2 are complementary and have restricted entry
-        // group3 are the aux vars from the obj function and are unrestricted
-        // avoid consideration of complementary variables for comparison and selection
-        if( var >= 2 * n ) goto accept; // group3
         for(TLP_UINT i = 0; i<n; i++ )
-          if( ((pInfo->pActiveVariables[i] + n) == var) || ((var + n) == pInfo->pActiveVariables[i]) )
-            goto skip; // compliment detected in active set
+        {
+          // compliment detected in active set
+          TLP_UINT max = pInfo->pActiveVariables[i] > var ? pInfo->pActiveVariables[i] : var;
+          TLP_UINT min = pInfo->pActiveVariables[i] < var ? pInfo->pActiveVariables[i] : var;
+          if( max < 2 * n ) continue; // max not in group2, check another activevariable
+          if( (2 * min) == max ) goto skip; // aha, min and max are complementary variables. exclude variable var.
+        }
       }
-accept:
-      *pV = v;
-      *pC = c;
-    }
+      }
+    *pV = v;
+    *pC = c;
     continue;
-skip:
+
+skip: ;
     printf("skip variable: %d\n", var);
   }
 printf("selected variable: %d\n", *pC -1); // -1 converts col to var
