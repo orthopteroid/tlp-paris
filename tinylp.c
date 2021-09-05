@@ -152,7 +152,7 @@ tlp_rowdiv(
 }
 
 // divide row r1 by the coef of r1,c1 and subtract r2 from r1
-static TLP_INLINE TLP_RCCODE
+ TLP_RCCODE
 tlp_rowdivsub(
   struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1, TLP_UINT r2
 )
@@ -187,7 +187,7 @@ tlp_rowdivsub(
 }
 
 // from row r1, subtract the product of row r2 and the coef of r1,c1
-static TLP_INLINE TLP_RCCODE
+ TLP_RCCODE
 tlp_rowsubmul(
   struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1, TLP_UINT r2
 )
@@ -296,37 +296,45 @@ tlp_rowSmallestCoef(
   if( c1 >= pInfo->iCols || c2 >= pInfo->iCols || r >= pInfo->iRows ) return tlp_rc_encode(TLP_GEOMETRY);
 #endif
 
+  TLP_UINT n = 0;
+  if( pInfo->bQuadratic )
+  {
+    n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
+
+    printf("active variables: ");
+    for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
+    putchar('\n');
+  }
+
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
-//printf("%d %d %f\n", r, c, v);
     if( (v < *pV) )
     {
       // per H&L's restricted entry rule p687 s13.7 7th ed.
       if( pInfo->bQuadratic )
       {
-        // variables are numbered 0..n..m, m=2n
-        // group 0<n are complementary with group n<m
+        // variables are numbered into 3 groups: 0..group1..n..group2..m..group3..k, m=2n
+        // group1 and group2 are complementary and have restricted entry
+        // group3 are the aux vars from the obj function and are unrestricted
         // avoid consideration of complementary variables for comparison and selection
-        TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
-        TLP_UINT v = c -1; // -1 converts from col to var#
+        TLP_UINT var = c -1; // -1 converts from col to var
+        if( var >= 2 * n ) goto accept; // group3
         for(TLP_UINT i = 0; i<n; i++ )
-        {
-          printf("%d vs %d or %d vs %d\n",pInfo->pActiveVariables[i] + n, v, v + n, pInfo->pActiveVariables[i]);
-          if( (pInfo->pActiveVariables[i] + n == v) || (v + n == pInfo->pActiveVariables[i]) )
+          if( (pInfo->pActiveVariables[i] + n == var) || (var + n == pInfo->pActiveVariables[i]) )
           {
-            printf("skip\n");
-            goto skip;
+printf("skip variable: %d\n", var);
+            goto skip; // compliment detected in active set
           }
-        }
       }
+accept:
       *pV = v;
       *pC = c;
     }
 skip: ;
   }
-//printf("out %d\n", *pC);
+printf("selected variable: %d\n", *pC -1); // -1 converts col to var
 
   return tlp_rc_encode(TLP_OK);
 }
@@ -431,7 +439,7 @@ tlp_setup_max(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iVars; // review: not iDefiningvars?
+  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
   pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
   memset(pInfo->pActiveVariables, 0, iBytes);
 

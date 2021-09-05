@@ -51,36 +51,34 @@ int main()
     //
     // rows = M + Z + #variables + #constraints
     // columns = Z + #quadratics + #lagranges + #slacks + #artificals + rhs
-    // Z       x1      x2       u1   y1  y2  v1  z1  z2  rhs
-    // 0       0       0         0    0   0  0   0   0   rhs, M
-    // 1       0       0         0    0   0  0  -1  -1   rhs, Z
-    // 0  -2*Q[1,1] -2*Q[1,2]  G[1]  -1   0  0   1   0   rhs, Q1
-    // 0  -2*Q[2,1] -2*Q[2,2]  G[2]   0  -1  0   0   1   rhs, Q2
-    // 0     G[1]     G[2]                   1           rhs, G`
+    //  Z       x1      x2       u1   y1  y2  v1  z1  z2  rhs
+    //  0       0       0         0    0   0  0   0   0   rhs, M
+    // -1       0       0         0    0   0  0   1   1   rhs, Z, -1 to maximize
+    //  0  -2*Q[1,1] -2*Q[1,2]  G[1]  -1   0  0   1   0   rhs, Q1
+    //  0  -2*Q[2,1] -2*Q[2,2]  G[2]   0  -1  0   0   1   rhs, Q2
+    //  0     G[1]     G[2]                   1           rhs, G`
     // where:
     // y1, y2 are (negated) slacks that convert Q1 & Q2 from KKT <= into LP =
     // z1, z2 are artificals to minimize F'
     // u1, v1 are created from constaint G1 (u is lagrange coefs and v is a slack)
-    //
-    // minimize z1 + z2
+    // p688 shows mx differences... two phase method? p144
     const char* vars[] = {"x1", "x2", "u1"};
     double mx[] = {
     // Z    x1   x2    u1   y1   y2   v1   z1   z2  rhs
-// p688 shows mx differences... two phase method? p144
-       0.,  0.,   0.,  0.,  0.,  0.,  0.,  1.,  1.,  0., // M
-      -1.,  0.,   0.,  0.,  0.,  0.,  0.,  1.,  1.,  0., // Z, * -1 to maximize
+       0.,  0.,   0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., // M
+      -1.,  0.,   0.,  0.,  0.,  0.,  0.,  1.,  1.,  0., // Z, -1 to maximize
        0., +4.,  -4.,  1., -1.,  0.,  0.,  1.,  0., 15., // Q1
        0., -4.,  +8.,  2.,  0., -1.,  0.,  0.,  1., 30., // Q2
        0.,  1.,   2.,  0.,  0.,  0.,  1.,  0.,  0., 30., // G1'
     };
     double mxsol[] = { 0, 0, 0, };
     double mxver[] = { 12., 9., 3., }; // x1 x2 u1
-    TLP_UINT activevars[ 3 ] = {3,4,5}; // slacks, ranges 0..7 (3 * variables + 2 * constraints - 1)
+    TLP_UINT activevars[ 3 ] = {2,6,7}; // u1 z1 z2, ranges 0..7 (3 * variables + 2 * constraints - 1)
     struct MXInfo mxInfo = {
 .bMaximize = 1,
 .bQuadratic = 1,
-.iConstraints = 3, // Q1 Q2 G1' // was 3 = variables + contraints: x1 x2 u1
-.iDefiningvars = 1, // constraints: G1'
+.iConstraints = 3, // variables + contraints: x1 x2 u1
+.iDefiningvars = 3, // x1 x2 u1 // was 1 = constraints: G1'
 .iSlackvars = 5, // slacks = 2 * variables + constraints: y1 y2 z1 z2 v1
 .iRows = +1 +1 +2 +1, // +M +Z +Q1 +Q2 + contraints
 .iCols = +1 +6 +2 +1, // +Z + variables *3 + contraints *2 +rhs. *3 since every variable needs x,y,z. *2 since every constraint needs u,v

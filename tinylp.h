@@ -109,4 +109,15 @@ TLP_RCCODE tlp_soln( struct MXInfo* pInfo, double* pSOLMX );
 TLP_RCCODE tlp_mxequal( const double* pA, const double* pB, const double fZero, TLP_UINT n );
 TLP_RCCODE tlp_fini( struct MXInfo* pInfo );
 
+ TLP_RCCODE
+tlp_rowsubmul(
+  struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1, TLP_UINT r2
+);
+
+ TLP_RCCODE
+tlp_rowdivsub(
+  struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1, TLP_UINT r2
+);
+
+
 #endif /*_TINYLP_H_*/
