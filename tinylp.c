@@ -282,7 +282,7 @@ tlp_colSmallestPosRatio(
 
 // check specified row for most -ve coef
 static TLP_INLINE TLP_RCCODE
-tlp_rowSmallestCoef(
+tlp_rowLargestNegCoef(
   struct MXInfo* pInfo,
   TLP_UINT c1, TLP_UINT c2, TLP_UINT r,
   TLP_UINT* pC, double* pV
@@ -296,52 +296,93 @@ tlp_rowSmallestCoef(
   if( c1 >= pInfo->iCols || c2 >= pInfo->iCols || r >= pInfo->iRows ) return tlp_rc_encode(TLP_GEOMETRY);
 #endif
 
-  TLP_UINT n = 0;
-  if( pInfo->bQuadratic )
-  {
-    n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
-
-    printf("active variables: ");
-    for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
-    putchar('\n');
-  }
+  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
 
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
     TLP_UINT var = c -1; // -1 converts from col to var
 
-    // trivially exclude checking variables that are already active
+    // trivially exclude variables that are already active
+    for(TLP_UINT i=0; i<n; i++ )
+      if( (pInfo->pActiveVariables[i] == var) )
+        goto skip; // already in active set
+
+    double v = pInfo->pMatrix[ r * pInfo->iCols + c];
+    if( (v >= *pV) ) goto skip; // not smaller
+
+    *pV = v;
+    *pC = c;
+
+skip: ;
+  }
+
+  return tlp_rc_encode(TLP_OK);
+}
+
+// check specified row for most -ve coef
+// per H&L's restricted entry rule p687 s13.7 7th ed. for QP
+static TLP_INLINE TLP_RCCODE
+tlp_rowLargestNegCoef_QPRule(
+  struct MXInfo* pInfo,
+  TLP_UINT c1, TLP_UINT c2, TLP_UINT r,
+  TLP_UINT* pC, double* pV
+)
+{
+#ifndef NDEBUG
+  if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
+  if( !pInfo->pMatrix ) return tlp_rc_encode(TLP_ASSERT);
+  if( !pC || !pV ) return tlp_rc_encode(TLP_ASSERT);
+  if( c1 >= TLP_BADINDEX || c2 >= TLP_BADINDEX ) return tlp_rc_encode(TLP_ASSERT);
+  if( c1 >= pInfo->iCols || c2 >= pInfo->iCols || r >= pInfo->iRows ) return tlp_rc_encode(TLP_GEOMETRY);
+#endif
+
+  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
+
+  printf("active variables: ");
+  for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
+  putchar('\n');
+
+  TLP_UINT c;
+  for( c = c1; c < c2; c++ )
+  {
+    TLP_UINT var = c -1; // -1 converts from col to var
+
+    // trivially exclude variables that are already active
     for(TLP_UINT i = 0; i<n; i++ )
       if( (pInfo->pActiveVariables[i] == var) )
         goto skip; // already in active set
 
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
-    if( (v >= *pV) ) continue; // skip larger values
+    if( (v >= *pV) ) goto skip; // not smaller
 
-    // per H&L's restricted entry rule p687 s13.7 7th ed.
-    if( pInfo->bQuadratic )
+    // variables are numbered into 3 groups: 0..group1..n..group2..m..group3..k, m=2n
+    // group1 and group2 are complementary and have restricted entry
+    // group3 are the aux vars from the obj function and are unrestricted
+    // avoid consideration of complementary variables for comparison and selection
+
+    // trivially, if var is group 3 we can track it
+    if( var > 2 * n ) goto track;
+
+    // since var is group1 or group2, determine if it's complement is already active
+    for(TLP_UINT i=0; i<n; i++ )
     {
-      // variables are numbered into 3 groups: 0..group1..n..group2..m..group3..k, m=2n
-      // group1 and group2 are complementary and have restricted entry
-      // group3 are the aux vars from the obj function and are unrestricted
-      // avoid consideration of complementary variables for comparison and selection
-      if( var <= 2 * n ) // check if var in group1 or group2
+      TLP_UINT a = var, b = pInfo->pActiveVariables[i];
+      if( b > a )
       {
-        for(TLP_UINT i = 0; i<n; i++ )
-        {
-          // compliment detected in active set
-          TLP_UINT max = pInfo->pActiveVariables[i] > var ? pInfo->pActiveVariables[i] : var;
-          TLP_UINT min = pInfo->pActiveVariables[i] < var ? pInfo->pActiveVariables[i] : var;
-          if( max < 2 * n ) continue; // max not in group2, check another activevariable
-          if( (2 * min) == max ) goto skip; // aha, min and max are complementary variables. exclude variable var.
-        }
+        if( b < 2 * n ) continue; // max not in group2, check another active variable
+        if( (2 * a) == b ) goto skip; // aha, min and max are complementary variables. exclude variable var.
+      } else {
+        if( a < 2 * n ) continue; // max not in group2, check another active variable
+        if( (2 * b) == a ) goto skip; // aha, min and max are complementary variables. exclude variable var.
       }
-      }
+    }
+
+track:
     *pV = v;
     *pC = c;
-    continue;
 
+    continue; // return to top of column loop
 skip: ;
     printf("skip variable: %d\n", var);
   }
@@ -372,8 +413,14 @@ tlp_pivot(
   double pivVal = 0.0; // to look for -ve pivot values, start with an invalid value
 
   // +1 to skip col z
-  if( (rc = tlp_rowSmallestCoef(pInfo, +1, rhsCol, mRow, &pivCol, &pivVal)) ) return rc;
-  if( (rc = tlp_rowSmallestCoef(pInfo, +1, rhsCol, zRow, &pivCol, &pivVal)) ) return rc;
+  if( pInfo->bQuadratic ) {
+    // per H&L's restricted entry rule p687 s13.7 7th ed.
+    if( (rc = tlp_rowLargestNegCoef_QPRule(pInfo, +1, rhsCol, mRow, &pivCol, &pivVal)) ) return rc;
+    if( (rc = tlp_rowLargestNegCoef_QPRule(pInfo, +1, rhsCol, zRow, &pivCol, &pivVal)) ) return rc;
+  } else {
+    if( (rc = tlp_rowLargestNegCoef(pInfo, +1, rhsCol, mRow, &pivCol, &pivVal)) ) return rc;
+    if( (rc = tlp_rowLargestNegCoef(pInfo, +1, rhsCol, zRow, &pivCol, &pivVal)) ) return rc;
+  }
 
   // stopping condition is when obj fxn has no more -ve coefs
   if( pivCol == TLP_BADINDEX ) return tlp_rc_encode(TLP_OK);
