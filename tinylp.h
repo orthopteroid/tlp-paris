@@ -1,5 +1,5 @@
 // linear program solver (simplex method), orthopteroid@gmail.com, BSD2 license
-// based on "Operations Research", Hiller & Lieberman (1974)
+// based on "Operations Research", Hiller & Lieberman (2nd ed. 1974, 7th ed. 2001)
 
 #ifndef _TINYLP_H_
 #define _TINYLP_H_
@@ -22,6 +22,7 @@ enum
   TLP_ZERO=5,
   TLP_INFINITY=6,
   TLP_UNBOUNDED=7,
+  TLP_AUGMENTED=8,
 };
 
 // for some errors, knowing the relevant row/col that caused the problem
@@ -108,6 +109,8 @@ TLP_RCCODE tlp_pivot( struct MXInfo* pInfo );
 TLP_RCCODE tlp_soln( struct MXInfo* pInfo, double* pSOLMX );
 TLP_RCCODE tlp_mxequal( const double* pA, const double* pB, const double fZero, TLP_UINT n );
 TLP_RCCODE tlp_fini( struct MXInfo* pInfo );
+
+int tlp_is_augmented( struct MXInfo* pInfo );
 
  TLP_RCCODE
 tlp_rowsubmul(

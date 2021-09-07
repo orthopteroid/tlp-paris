@@ -24,8 +24,7 @@ int main()
   TLP_RCCODE rc;
   TLP_UINT e, r, c;
 
-//#ifdef true
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     // QLP maximization problem [H&L ed7 p684]
     // max F == 15*x1 + 30*x2 + 4*x1x2 - 2*x1x1 - 4*x2x2
@@ -107,36 +106,28 @@ if(1)    {
 printf("%f\n",d);
       assert( d > 0. );
       tlp_dump_tableau( &mxInfo, 0, 0 );
-      tlp_dump_active_vars( &mxInfo );
       rc = tlp_pivot( &mxInfo );
 printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mxInfo);
       tlp_dump_tableau( &mxInfo, 0, 0 );
-      tlp_dump_active_vars( &mxInfo );
       rc = tlp_pivot( &mxInfo );
 printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mxInfo);
       tlp_dump_tableau( &mxInfo, 0, 0 );
-      tlp_dump_active_vars( &mxInfo );
       rc = tlp_pivot( &mxInfo );
 printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mxInfo);
       tlp_dump_tableau( &mxInfo, 0, 0 );
-      tlp_dump_active_vars( &mxInfo );
       rc = tlp_pivot( &mxInfo );
 printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mxInfo);
       tlp_dump_tableau( &mxInfo, 0, 0 );
-      tlp_dump_active_vars( &mxInfo );
     }
 //    tlp_dump_tableau(&mxInfo, TLP_BADINDEX, TLP_BADINDEX);
 //    rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
   }
 
-//return 0;
-//#endif
-
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     // https://www.youtube.com/watch?v=gCs4YKiHIhg
     // obj = 1 * x1 ^ 2 + 3 * x2 + 2 * x3 ^ 2
@@ -183,7 +174,7 @@ printf("rc = %X\n",tlp_rc_decode(rc));
     printf("ok\n");
   }
 
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     // https://www.brainkart.com/article/Special-Cases-in-the-Simplex-Method_11207/
     // PROBLEM SET 3.5A, Problem #2
@@ -226,13 +217,13 @@ printf("rc = %X\n",tlp_rc_decode(rc));
       if( elavhod_detect( &mx2, &htlod ) ) { printf("oscillation detected\n"); rc = 0; break; }
     }
     CHECK;
-    tlp_soln(&mx2, mxsol);
+    if( (rc = tlp_soln(&mx2, mxsol)) != TLP_OK ) printf("augmented? %d\n", tlp_rc_decode(rc));
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
     elavhod_fin( &mx2, &htlod  );
   }
 
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -270,13 +261,13 @@ printf("rc = %X\n",tlp_rc_decode(rc));
       if( elavhod_detect( &mx2, &htlod ) ) { printf("oscillation detected\n"); rc = 0; break; }
     }
     CHECK;
-    tlp_soln(&mx2, mxsol);
+    if( (rc = tlp_soln(&mx2, mxsol)) != TLP_OK ) printf("augmented? %d\n", tlp_rc_decode(rc));
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
     elavhod_fin( &mx2, &htlod  );
   }
 
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -305,13 +296,13 @@ printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mx2);
     }
     CHECK;
-    tlp_soln(&mx2, mxsol);
+    if( (rc = tlp_soln(&mx2, mxsol)) != TLP_OK ) printf("augmented? %d\n", tlp_rc_decode(rc));
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
 
   // https://math.libretexts.org/Bookshelves/Applied_Mathematics/Book%3A_Applied_Finite_Mathematics_(Sekhon_and_Bloom)/04%3A_Linear_Programming_The_Simplex_Method/4.03%3A_Minimization_By_The_Simplex_Method
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -340,12 +331,12 @@ printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mx2);
     }
     CHECK;
-    tlp_soln(&mx2, mxsol);
+    if( (rc = tlp_soln(&mx2, mxsol)) != TLP_OK ) printf("augmented? %d\n", tlp_rc_decode(rc));
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
 
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -374,12 +365,12 @@ printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mx2);
     }
     CHECK;
-    tlp_soln(&mx2, mxsol);
+    if( (rc = tlp_soln(&mx2, mxsol)) != TLP_OK ) printf("augmented? %d\n", tlp_rc_decode(rc));
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }
 
-  printf("----- new problem\n");
+  printf("----- new problem. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -408,7 +399,7 @@ printf("rc = %X\n",tlp_rc_decode(rc));
       tlp_dump_current_soln(&mx2);
     }
     CHECK;
-    tlp_soln(&mx2, mxsol);
+    if( (rc = tlp_soln(&mx2, mxsol)) != TLP_OK ) printf("augmented? %d\n", tlp_rc_decode(rc));
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
   }

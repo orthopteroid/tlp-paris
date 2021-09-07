@@ -22,20 +22,6 @@
 // access simplex tableau
 #define TBMX(_r, _c ) ( pInfo->pMatrix[ (_r) * pInfo->iCols + (_c) ] )
 
-// variable index validation
-#ifdef NDEBUG
-inline TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
-{
-  return i;
-}
-#else
-static TLP_UINT VIMX(struct MXInfo* pInfo, TLP_UINT i)
-{
-  assert(i != TLP_BADINDEX);
-  return i;
-}
-#endif
-
 ///////////////////////////////////////
 
 #ifndef NDEBUG
@@ -95,22 +81,21 @@ void tlp_dump_config( struct MXInfo* pInfo )
 
 void tlp_dump_active_vars( struct MXInfo* pInfo )
 {
-  TLP_UINT v;
+  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
 
-  if( pInfo->bMaximize ) {
-    for(v = 0; v < pInfo->iDefiningvars; v++ )
-      printf("%d ", pInfo->pActiveVariables[ v ]);
-  } else {
-    for(v = 0; v < pInfo->iConstraints; v++ ) // transpose requires iConstraints
-      printf("%d ", pInfo->pActiveVariables[ v ]);
-  }
-  for (v = 0; v < pInfo->iConstraints; v++) {
-  }
+  for(TLP_UINT v = 0; v < n; v++ )
+    printf("%d ", pInfo->pActiveVariables[ v ]);
   putchar('\n');
 }
 
 void tlp_dump_current_soln( struct MXInfo* pInfo )
 {
+  if( tlp_is_augmented( pInfo ) )
+  {
+    printf("unprintable augmented solution\n");
+    return;
+  }
+
   TLP_UINT rhscol = pInfo->iCols - 1;
   TLP_UINT  v;
 
@@ -339,9 +324,9 @@ tlp_rowLargestNegCoef_QPRule(
 
   TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
 
-  printf("active variables: ");
-  for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
-  putchar('\n');
+//  printf("active variables: ");
+//  for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
+//  putchar('\n');
 
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
@@ -384,9 +369,9 @@ track:
 
     continue; // return to top of column loop
 skip: ;
-    printf("skip variable: %d\n", var);
+//    printf("skip variable: %d\n", var);
   }
-printf("selected variable: %d\n", *pC -1); // -1 converts col to var
+//  printf("selected variable: %d\n", *pC -1); // -1 converts col to var
 
   return tlp_rc_encode(TLP_OK);
 }
@@ -436,8 +421,8 @@ tlp_pivot(
 
   // record entering/leaving variables
   TLP_UINT rVarLeaves = pivRow -2; // -2 skips rows M and Z
-  pInfo->iVarEnters = VIMX( pInfo, pivCol -1 ); // -1 skips col Z
-  pInfo->iVarLeaves = VIMX( pInfo, pInfo->pActiveVariables[ rVarLeaves ] );
+  pInfo->iVarEnters = pivCol -1; // -1 skips col Z
+  pInfo->iVarLeaves = pInfo->pActiveVariables[ rVarLeaves ];
   pInfo->pActiveVariables[ rVarLeaves ] = pInfo->iVarEnters;
 
   // normalize row r1 by the pivot r1,c1
@@ -661,7 +646,7 @@ tlp_soln(
   }
   pSOLMX[ pInfo->iDefiningvars ] = TBMX(1, rhscol );
 
-  return tlp_rc_encode(TLP_OK);
+  return tlp_rc_encode( tlp_is_augmented( pInfo ) ? TLP_AUGMENTED : TLP_OK);
 }
 
 TLP_RCCODE
@@ -679,6 +664,20 @@ tlp_fini(
   memset( pInfo, 0, sizeof(struct MXInfo) );
 
   return tlp_rc_encode(TLP_OK);
+}
+
+int tlp_is_augmented( struct MXInfo* pInfo )
+{
+  if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
+  if( !pInfo->pActiveVariables ) return tlp_rc_encode(TLP_ASSERT);
+
+  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
+
+  // check if any of the active variables are slacks
+  for(TLP_UINT i=0; i<pInfo->iVars; i++)
+    if( pInfo->pActiveVariables[ i ] >= n ) return 1;
+
+  return 0;
 }
 
 TLP_RCCODE
