@@ -23,8 +23,7 @@ struct ELAVHODInfo
 
 void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t history, double rhstol );
 void elavhod_dump_history( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
-void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
-int elavhod_detect( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
+TLP_RCCODE elavhod_check( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
 void elavhod_fin( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
 
 ///////////////

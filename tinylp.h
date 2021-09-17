@@ -23,6 +23,7 @@ enum
   TLP_INFINITY=6,
   TLP_UNBOUNDED=7,
   TLP_AUGMENTED=8,
+  TLP_OSCILLATION=9, // see analysis module
 };
 
 const static char* tlp_messages[] =
@@ -36,6 +37,7 @@ const static char* tlp_messages[] =
   "TLP_INFINITY",
   "TLP_UNBOUNDED",
   "TLP_AUGMENTED",
+  "TLP_OSCILLATION",
 };
 
 // for some errors, knowing the relevant row/col that caused the problem
@@ -48,7 +50,6 @@ enum
   TLP_RCBITS_IDX=14,
   TLP_RCBITS_STAT=4,
   TLP_BADINDEX=((1<<(TLP_RCBITS_IDX+1))-1),
-  TLP_RCUNFINISHED=(TLP_UNFINISHED<<(2*TLP_RCBITS_IDX)),
 };
 
 #ifdef NDEBUG

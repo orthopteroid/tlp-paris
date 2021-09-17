@@ -60,9 +60,7 @@ void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t his
 
 void elavhod_dump_history( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 {
-  int i;
-
-  for(i=0; i<htlod->iHistory; i++)
+  for(int i=0; i<htlod->iHistory; i++)
   {
     int j = ( pInfo->iIter + (htlod->iHistory -i) ) % htlod->iHistory;
     printf(
@@ -72,32 +70,29 @@ void elavhod_dump_history( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
   }
 }
 
-void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
+static void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 {
-  int i;
-
   uint32_t elv =
     ((uint32_t)htlod->var_entropy[ pInfo->iVarEnters ] << 16) |
     (uint32_t)htlod->var_entropy[ pInfo->iVarLeaves ];
 
   uint32_t avh = 0;
-  for(i=0; i<htlod->iActiveVars; i++ )
+  for(int i=0; i<htlod->iActiveVars; i++ )
     elavhod__avh_hash(&avh, htlod->var_entropy[ pInfo->pActiveVariables[ i ] ]);
 
   TLP_UINT rhscol = pInfo->iCols - 1;
   double rhs = TBMX(1, rhscol );
 
-  i = pInfo->iIter % htlod->iHistory;
-  htlod->elv[ i ] = elv;
-  htlod->avh[ i ] = avh;
-  htlod->rhs[ i ] = rhs;
+  int j = pInfo->iIter % htlod->iHistory;
+  htlod->elv[ j ] = elv;
+  htlod->avh[ j ] = avh;
+  htlod->rhs[ j ] = rhs;
 }
 
-int elavhod_detect( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
+static int elavhod_detect( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 {
-  int i, j;
-  j = pInfo->iIter % htlod->iHistory;
-  for(i=0; i<htlod->iHistory; i++)
+  int j = pInfo->iIter % htlod->iHistory;
+  for(int i=0; i<htlod->iHistory; i++)
     if( i != j )
       if( htlod->elv[ j ] == htlod->elv[ i ] )
         if( htlod->avh[ j ] == htlod->avh[ i ] )
@@ -105,6 +100,13 @@ int elavhod_detect( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
             return 1;
 
   return 0;
+}
+
+TLP_RCCODE elavhod_check( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
+{
+  elavhod_update(pInfo, htlod);
+  if( elavhod_detect(pInfo, htlod) ) return tlp_rc_encode(TLP_OSCILLATION);
+  return tlp_rc_encode(TLP_OK);
 }
 
 void elavhod_fin( struct MXInfo *pInfo, struct ELAVHODInfo *htlod  )

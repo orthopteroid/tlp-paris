@@ -207,17 +207,20 @@ printf("rc = %X\n",tlp_rc_decode(rc));
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
     elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
-    while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
+    while( 1 )
     {
+      rc = tlp_pivot( &mx2 );
+      if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
+
+      rc = elavhod_check( &mx2, &htlod );
+      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
+
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
-
-      elavhod_update( &mx2, &htlod );
-      //elavhod_dump_history(&mx2, &htlod);
-      if( elavhod_detect( &mx2, &htlod ) ) { printf("oscillation detected\n"); rc = 0; break; }
     }
-    CHECK;
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
+    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
@@ -252,17 +255,20 @@ printf("rc = %X\n",tlp_rc_decode(rc));
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
     elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
-    while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
+    while( 1 )
     {
+      rc = tlp_pivot( &mx2 );
+      if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
+
+      rc = elavhod_check( &mx2, &htlod );
+      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
+
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
-
-      elavhod_update( &mx2, &htlod );
-      //elavhod_dump_history(&mx2, &htlod);
-      if( elavhod_detect( &mx2, &htlod ) ) { printf("oscillation detected\n"); rc = 0; break; }
     }
-    CHECK;
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
+    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
@@ -291,13 +297,15 @@ printf("rc = %X\n",tlp_rc_decode(rc));
     rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 2, (double *) 0, 0, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-    while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
+    while( 1 )
     {
+      rc = tlp_pivot( &mx2 );
+      if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
     }
-    CHECK;
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
@@ -326,13 +334,15 @@ printf("rc = %X\n",tlp_rc_decode(rc));
     rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 2, (double *) 0, 0, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
-    while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
+    while( 1 )
     {
+      rc = tlp_pivot( &mx2 );
+      if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
       if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
     }
-    CHECK;
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
@@ -360,13 +370,15 @@ printf("rc = %X\n",tlp_rc_decode(rc));
     rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 2, (double *) 0, 0, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
-    while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
+    while( 1 )
     {
+      rc = tlp_pivot( &mx2 );
+      if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
       if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
     }
-    CHECK;
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
@@ -394,13 +406,15 @@ printf("rc = %X\n",tlp_rc_decode(rc));
     rc = tlp_setup_min(&mx2, mxobj, 2, mxGE, 2, (double *) 0, 0, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
-    while( (rc = tlp_pivot( &mx2 )) == TLP_RCUNFINISHED )
+    while( 1 )
     {
+      rc = tlp_pivot( &mx2 );
+      if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
       if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
     }
-    CHECK;
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
