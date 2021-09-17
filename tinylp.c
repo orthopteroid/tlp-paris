@@ -90,11 +90,7 @@ void tlp_dump_active_vars( struct MXInfo* pInfo )
 
 void tlp_dump_current_soln( struct MXInfo* pInfo )
 {
-  if( tlp_is_augmented( pInfo ) )
-  {
-    printf("unprintable augmented solution\n");
-    return;
-  }
+  if( tlp_is_augmented( pInfo ) ) { printf("AUGMENTED\n"); return; }
 
   TLP_UINT rhscol = pInfo->iCols - 1;
   TLP_UINT  v;
@@ -646,7 +642,9 @@ tlp_soln(
   }
   pSOLMX[ pInfo->iDefiningvars ] = TBMX(1, rhscol );
 
-  return tlp_rc_encode( tlp_is_augmented( pInfo ) ? TLP_AUGMENTED : TLP_OK);
+  if( tlp_is_augmented( pInfo ) ) return tlp_rc_encode(TLP_AUGMENTED);
+
+  return tlp_rc_encode(TLP_OK);
 }
 
 TLP_RCCODE

@@ -25,6 +25,19 @@ enum
   TLP_AUGMENTED=8,
 };
 
+const static char* tlp_messages[] =
+{
+  "TLP_OK",
+  "TLP_UNFINISHED",
+  "TLP_ASSERT",
+  "TLP_GEOMETRY",
+  "TLP_INVALID",
+  "TLP_ZERO",
+  "TLP_INFINITY",
+  "TLP_UNBOUNDED",
+  "TLP_AUGMENTED",
+};
+
 // for some errors, knowing the relevant row/col that caused the problem
 // is desired. so, we pack the status, row and col into a single 32bit
 // value: 14 bits for each of row and col and 4 bits for error code.
