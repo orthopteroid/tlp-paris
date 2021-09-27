@@ -81,9 +81,7 @@ void tlp_dump_config( struct MXInfo* pInfo )
 
 void tlp_dump_active_vars( struct MXInfo* pInfo )
 {
-  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
-
-  for(TLP_UINT v = 0; v < n; v++ )
+  for(TLP_UINT v = 0; v < pInfo->iVars; v++ )
     printf("%d ", pInfo->pActiveVariables[ v ]);
   putchar('\n');
 }
@@ -103,6 +101,21 @@ void tlp_dump_current_soln( struct MXInfo* pInfo )
       printf("%+10.4f", TBMX( +1, rhscol -1 -pInfo->pActiveVariables[ v ] ) ); // +1 skips row Z, -1 skips col Z, -ve for RtL
   }
   printf(" = %+10.4f\n", TBMX(1, rhscol ));
+}
+
+void tlp_dump_active_soln( struct MXInfo* pInfo )
+{
+  TLP_UINT rhscol = pInfo->iCols - 1;
+  TLP_UINT  v;
+
+  if( pInfo->bMaximize ) {
+    for(v = 0; v < pInfo->iVars; v++ )
+      printf("%+10.4f", TBMX( pInfo->pActiveVariables[ v ] +2, rhscol ) ); // +2 skips rows M and Z
+  } else {
+    for(v = 0; v < pInfo->iVars; v++ ) // transpose
+      printf("%+10.4f", TBMX( +1, rhscol -1 -pInfo->pActiveVariables[ v ] ) ); // +1 skips row Z, -1 skips col Z, -ve for RtL
+  }
+  printf(" = %+10.4f %s\n", TBMX(1, rhscol ), tlp_is_augmented( pInfo ) ? "(AUGMENTED)" : "");
 }
 
 ///////////////////////////////////////
@@ -277,25 +290,23 @@ tlp_rowLargestNegCoef(
   if( c1 >= pInfo->iCols || c2 >= pInfo->iCols || r >= pInfo->iRows ) return tlp_rc_encode(TLP_GEOMETRY);
 #endif
 
-  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
-
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
     TLP_UINT var = c -1; // -1 converts from col to var
 
-    // trivially exclude variables that are already active
-    for(TLP_UINT i=0; i<n; i++ )
+/*    // trivially exclude variables that are already active, review: broken!
+    for(TLP_UINT i=0; i<pInfo->iVars; i++ )
       if( (pInfo->pActiveVariables[i] == var) )
-        goto skip; // already in active set
+        goto skip_variable_and_check_another; */ // already in active set
 
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
-    if( (v >= *pV) ) goto skip; // not smaller
+    if( (v >= *pV) ) goto skip_variable_and_check_another; // not smaller
 
     *pV = v;
     *pC = c;
 
-skip: ;
+skip_variable_and_check_another: ;
   }
 
   return tlp_rc_encode(TLP_OK);
@@ -303,6 +314,7 @@ skip: ;
 
 // check specified row for most -ve coef
 // per H&L's restricted entry rule p687 s13.7 7th ed. for QP
+// very horrorific nested looping in here...
 static TLP_INLINE TLP_RCCODE
 tlp_rowLargestNegCoef_QPRule(
   struct MXInfo* pInfo,
@@ -318,24 +330,25 @@ tlp_rowLargestNegCoef_QPRule(
   if( c1 >= pInfo->iCols || c2 >= pInfo->iCols || r >= pInfo->iRows ) return tlp_rc_encode(TLP_GEOMETRY);
 #endif
 
-  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
-
 //  printf("active variables: ");
-//  for(TLP_UINT i = 0; i<n; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
+//  for(TLP_UINT i = 0; i<pInfo->iVars; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
 //  putchar('\n');
+
+  // due to square mx, pInfo->iConstraints count the number of complemntary variables
+  TLP_UINT n = pInfo->iConstraints;
 
   TLP_UINT c;
   for( c = c1; c < c2; c++ )
   {
     TLP_UINT var = c -1; // -1 converts from col to var
 
-    // trivially exclude variables that are already active
-    for(TLP_UINT i = 0; i<n; i++ )
+/*    // trivially exclude variables that are already active
+    for(TLP_UINT i = 0; i<pInfo->iVars; i++ )
       if( (pInfo->pActiveVariables[i] == var) )
-        goto skip; // already in active set
+        goto skip_variable_and_check_another; */ // already in active set
 
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
-    if( (v >= *pV) ) goto skip; // not smaller
+    if( (v >= *pV) ) goto skip_variable_and_check_another; // not smaller
 
     // variables are numbered into 3 groups: 0..group1..n..group2..m..group3..k, m=2n
     // group1 and group2 are complementary and have restricted entry
@@ -343,7 +356,7 @@ tlp_rowLargestNegCoef_QPRule(
     // avoid consideration of complementary variables for comparison and selection
 
     // trivially, if var is group 3 we can track it
-    if( var > 2 * n ) goto track;
+    if( var > 2 * n ) goto track_variable_and_check_another;
 
     // since var is group1 or group2, determine if it's complement is already active
     for(TLP_UINT i=0; i<n; i++ )
@@ -352,19 +365,18 @@ tlp_rowLargestNegCoef_QPRule(
       if( b > a )
       {
         if( b < 2 * n ) continue; // max not in group2, check another active variable
-        if( (2 * a) == b ) goto skip; // aha, min and max are complementary variables. exclude variable var.
+        if( (2 * a) == b ) goto skip_variable_and_check_another; // aha, min and max are complementary variables. exclude variable var.
       } else {
         if( a < 2 * n ) continue; // max not in group2, check another active variable
-        if( (2 * b) == a ) goto skip; // aha, min and max are complementary variables. exclude variable var.
+        if( (2 * b) == a ) goto skip_variable_and_check_another; // aha, min and max are complementary variables. exclude variable var.
       }
     }
 
-track:
+track_variable_and_check_another:
     *pV = v;
     *pC = c;
-
-    continue; // return to top of column loop
-skip: ;
+    continue;
+skip_variable_and_check_another: ;
 //    printf("skip variable: %d\n", var);
   }
 //  printf("selected variable: %d\n", *pC -1); // -1 converts col to var
@@ -550,7 +562,7 @@ tlp_setup_min(
 
   pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
   pInfo->iCols = 1 + pInfo->iDefiningvars + pInfo->iSlackvars + 1; // Z, vars, slacks, RHS
-  pInfo->iVars = pInfo->iConstraints + 1; // +1 since this is indexed by row, REVIEW: +1 not needed?
+  pInfo->iVars = pInfo->iConstraints;
 
   pInfo->fMax = DBL_MAX;
   pInfo->fMaxNeg = -pInfo->fMax;
@@ -569,7 +581,7 @@ tlp_setup_min(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iVars; // review: not iConstraints?
+  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
   pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
   memset(pInfo->pActiveVariables, 0, iBytes);
 

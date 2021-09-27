@@ -99,6 +99,7 @@ struct MXInfo
 
 void tlp_dump_tableau( struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1 );
 void tlp_dump_active_vars( struct MXInfo* pInfo );
+void tlp_dump_active_soln( struct MXInfo* pInfo );
 void tlp_dump_current_soln( struct MXInfo* pInfo );
 
 TLP_RCCODE
