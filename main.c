@@ -71,17 +71,17 @@ int main()
        0.,  1.,   2.,  0.,  0.,  0.,  1.,  0.,  0., 30., // G1'
     };
     double mxsol[] = { 0, 0, 0, };
-    double mxver[] = { 12., 9., 3., }; // x1 x2 u1
+    double mxver[] = { 12., 9., 0, }; // x1 x2 rhs
     TLP_UINT activevars[ 3 ] = {5,6,7}; // v1 z1 z2, ranges 0..7 (3 * variables + 2 * constraints - 1)
-    struct MXInfo mxInfo = {
+    struct MXInfo mx2 = {
 .bMaximize = 1,
 .bQuadratic = 1,
-.iConstraints = 3, // variables + contraints: x1 x2 u1
-.iDefiningvars = 3, // x1 x2 u1 // was 1 = constraints: G1'
-.iSlackvars = 5, // slacks = 2 * variables + constraints: y1 y2 z1 z2 v1
+.iDefiningvars = 2, // x1 x2
+.iConstraints = 2 + 1, // variables + contraints: Q1 Q2 G1' or x1 x2 G1'
+.iSlackvars = 4 + 1, // 2 * variables + constraints: y1 y2 z1 z2 v1
 .iRows = +1 +1 +2 +1, // +M +Z +Q1 +Q2 + contraints
-.iCols = +1 +6 +2 +1, // +Z + variables *3 + contraints *2 +rhs. *3 since every variable needs x,y,z. *2 since every constraint needs u,v
-.iVars = 3 /*+1 ??*/, // variables + contraints /*+1 as indexed by row ?? */
+.iCols = +1 +6 +2 +1, // +Z + 3 * variables + 2 * contraints +rhs. *3 since every variable needs x,y,z. *2 since every constraint needs u,v
+.iVars = 3, // variables + contraints: x1 x2 u1
 .pActiveVariables = activevars,
 .pMatrix = mx,
 .fMin = 1e-99, .fMinNeg = -1e-99,
@@ -91,42 +91,52 @@ int main()
 .iIter = -1,
 .iVarEnters = ~0, .iVarLeaves = ~0,
     };
-tlp_dump_tableau( &mxInfo, 0, 0 );
+printf("initial form\n");
+tlp_dump_tableau( &mx2, 0, 0 );
 
-rc = tlp_rowsubmul(&mxInfo, 1, 7, 2); // factor z1 from Q1
-printf("rc = %X\n",tlp_rc_decode(rc));
-tlp_dump_tableau( &mxInfo, 2, 7 );
+rc = tlp_rowsubmul(&mx2, 1, 7, 2); // factor z1 from Q1
+printf("%s: rc = %X\n","factor z1 from Q1",tlp_rc_decode(rc));
+tlp_dump_tableau( &mx2, 2, 7 );
 
-rc = tlp_rowsubmul(&mxInfo, 1, 8, 3); // factor z2 from Q2
-printf("rc = %X\n",tlp_rc_decode(rc));
-tlp_dump_tableau( &mxInfo, 3, 8 );
+rc = tlp_rowsubmul(&mx2, 1, 8, 3); // factor z2 from Q2
+printf("%s: rc = %X\n","factor z2 from Q2",tlp_rc_decode(rc));
+tlp_dump_tableau( &mx2, 3, 8 );
 
 if(1)    {
       double d = determinant( &mxobj[2] /* read quadratic part only */, 2 );
 printf("%f\n",d);
       assert( d > 0. );
-      tlp_dump_tableau( &mxInfo, 0, 0 );
-      rc = tlp_pivot( &mxInfo );
-printf("rc = %X\n",tlp_rc_decode(rc));
-      tlp_dump_current_soln(&mxInfo);
-      tlp_dump_tableau( &mxInfo, 0, 0 );
-      rc = tlp_pivot( &mxInfo );
-printf("rc = %X\n",tlp_rc_decode(rc));
-      tlp_dump_current_soln(&mxInfo);
-      tlp_dump_tableau( &mxInfo, 0, 0 );
-      rc = tlp_pivot( &mxInfo );
-printf("rc = %X\n",tlp_rc_decode(rc));
-      tlp_dump_current_soln(&mxInfo);
-      tlp_dump_tableau( &mxInfo, 0, 0 );
-      rc = tlp_pivot( &mxInfo );
-printf("rc = %X\n",tlp_rc_decode(rc));
-      tlp_dump_current_soln(&mxInfo);
-      tlp_dump_tableau( &mxInfo, 0, 0 );
-    }
-//    tlp_dump_tableau(&mxInfo, TLP_BADINDEX, TLP_BADINDEX);
-//    rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
-  }
 
+    while( 1 )
+    {
+      rc = tlp_pivot( &mx2 );
+      if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
+      printf("iteration %d: %d enters %d leaves\n", mx2.iIter, mx2.iVarEnters, mx2.iVarLeaves);
+
+//      rc = elavhod_check( &mxInfo, &htlod );
+//      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
+
+      tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
+      if( !tlp_is_augmented(&mx2) ) { printf("FEASIBLE SOLUTION\n"); tlp_dump_current_soln(&mx2); }
+    }
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
+
+    }
+//    tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
+//    rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
+//    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
+    rc = tlp_soln(&mx2, mxsol);
+    printf("tlp_soln %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
+    tlp_dump_active_soln(&mx2); // for QP, result is always augmented
+
+    rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double));
+    printf("tlp_mxequal %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
+
+    mx2.pActiveVariables = mx2.pMatrix = 0; // hack: workaround non-dynamic allocations
+    rc = tlp_fini(&mx2); CHECK;
+//    elavhod_fin( &mx2, &htlod  );
+  }
+//return 0;
   printf("----- new problem. line %d\n", __LINE__);
   {
     // https://www.youtube.com/watch?v=gCs4YKiHIhg
