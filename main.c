@@ -24,7 +24,7 @@ int main()
   TLP_RCCODE rc;
   TLP_UINT e, r, c;
 
-  printf("----- new problem. line %d\n", __LINE__);
+  printf("----- QLP maximize. line %d\n", __LINE__);
   {
     // QLP maximization problem [H&L ed7 p684]
     // max F == 15*x1 + 30*x2 + 4*x1x2 - 2*x1x1 - 4*x2x2
@@ -41,7 +41,7 @@ int main()
       1.,  2.,  30.,
     };
 
-    // KKT minimization by QLP maximization of -F' problem [H&L ed7 p687]
+    // QLP maximization by maximizing the -F' KKT minimization problem [H&L ed7 p687]
     // max -F' == z1 + z2
     // st Q1 == -2*Q[1,1]*x1 -2*Q[1,2]*x2 + G[1]*u1 - y1 = 15
     // st Q2 == -2*Q[2,1]*x1 -2*Q[2,2]*x2 + G[2]*u1 - y2 = 30
@@ -52,7 +52,7 @@ int main()
     // columns = Z + #quadratics + #lagranges + #slacks + #artificals + rhs
     //  Z       x1      x2       u1   y1  y2  v1  z1  z2  rhs
     //  0       0       0         0    0   0  0   0   0   rhs, M
-    // -1       0       0         0    0   0  0   1   1   rhs, Z, -1 to maximize
+    // -1       0       0         0    0   0  0   1   1   rhs, Z, -1 constructs -F' problem
     //  0  -2*Q[1,1] -2*Q[1,2]  G[1]  -1   0  0   1   0   rhs, Q1
     //  0  -2*Q[2,1] -2*Q[2,2]  G[2]   0  -1  0   0   1   rhs, Q2
     //  0     G[1]     G[2]                   1           rhs, G`
@@ -65,7 +65,7 @@ int main()
     double mx[] = {
     // Z    x1   x2    u1   y1   y2   v1   z1   z2  rhs
        0.,  0.,   0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., // M
-      -1.,  0.,   0.,  0.,  0.,  0.,  0.,  1.,  1.,  0., // Z, -1 to maximize
+      -1.,  0.,   0.,  0.,  0.,  0.,  0.,  1.,  1.,  0., // Z, -1 constructs -F' problem
        0., +4.,  -4.,  1., -1.,  0.,  0.,  1.,  0., 15., // Q1
        0., -4.,  +8.,  2.,  0., -1.,  0.,  0.,  1., 30., // Q2
        0.,  1.,   2.,  0.,  0.,  0.,  1.,  0.,  0., 30., // G1'
@@ -138,7 +138,7 @@ printf("%f\n",d);
 //    elavhod_fin( &mx2, &htlod  );
   }
 
-  printf("----- minimize. line %d\n", __LINE__);
+  printf("----- LP minimize. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -174,7 +174,7 @@ printf("%f\n",d);
     rc = tlp_fini(&mx2); CHECK;
   }
 
-  printf("----- find lagrange coefs. line %d\n", __LINE__);
+  printf("----- KKT minimize. line %d\n", __LINE__);
   {
     // https://www.youtube.com/watch?v=gCs4YKiHIhg
     // obj = 1 * x1 ^ 2 + 3 * x2 + 2 * x3 ^ 2
@@ -221,7 +221,7 @@ printf("%f\n",d);
     printf("ok\n");
   }
 
-  printf("----- degenerate/oscillating. line %d\n", __LINE__);
+  printf("----- LP maximize (degenerate/oscillating). line %d\n", __LINE__);
   {
     // https://www.brainkart.com/article/Special-Cases-in-the-Simplex-Method_11207/
     // PROBLEM SET 3.5A, Problem #2
@@ -274,7 +274,7 @@ printf("%f\n",d);
     elavhod_fin( &mx2, &htlod  );
   }
 
-  printf("----- maximize le and eq constraints. line %d\n", __LINE__);
+  printf("----- LP maximize (maximize le and eq constraints). line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -322,7 +322,7 @@ printf("%f\n",d);
     elavhod_fin( &mx2, &htlod  );
   }
 
-  printf("----- maximize. line %d\n", __LINE__);
+  printf("----- LP maximize. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -359,7 +359,7 @@ printf("%f\n",d);
   }
 
   // https://math.libretexts.org/Bookshelves/Applied_Mathematics/Book%3A_Applied_Finite_Mathematics_(Sekhon_and_Bloom)/04%3A_Linear_Programming_The_Simplex_Method/4.03%3A_Minimization_By_The_Simplex_Method
-  printf("----- maximize. line %d\n", __LINE__);
+  printf("----- LP maximize. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
@@ -395,7 +395,7 @@ printf("%f\n",d);
     rc = tlp_fini(&mx2); CHECK;
   }
 
-  printf("----- maximize line %d\n", __LINE__);
+  printf("----- LP maximize. line %d\n", __LINE__);
   {
     const char* vars[] = { "x0", "x1" };
 
