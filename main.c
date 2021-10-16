@@ -72,16 +72,16 @@ int main()
     };
     double mxsol[] = { 0, 0, 0, };
     double mxver[] = { 12., 9., 0, }; // x1 x2 rhs
-    TLP_UINT activecols[ 8 ] = {5,6,7, 0, 0, 0, 0, 0}; //?? v1 z1 z2, ranges 0..7 (3 * variables + 2 * constraints - 1)
+    TLP_UINT activecols[ 3 ] = {6,7,8}; // constraints-slacks + z-slacks: v1 z1 z2
     struct MXInfo mx2 = {
 .bMaximize = 1,
 .bQuadratic = 1,
 .iDefiningvars = 2, // x1 x2
 .iConstraints = 2 + 1, // variables + contraints: Q1 Q2 G1' or x1 x2 G1'
 .iSlackvars = 4 + 1, // 2 * variables + constraints: y1 y2 z1 z2 v1
+.iActivevars = 3, // constraints-slacks + z-slacks: v1 z1 z2
 .iRows = +1 +1 +2 +1, // +M +Z +Q1 +Q2 + contraints
 .iCols = +1 +6 +2 +1, // +Z + 3 * variables + 2 * contraints +rhs. *3 since every variable needs x,y,z. *2 since every constraint needs u,v
-//.iVars = 3, // variables + contraints: x1 x2 u1
 .pActive = activecols,
 .pMatrix = mx,
 .fMin = 1e-99, .fMinNeg = -1e-99,

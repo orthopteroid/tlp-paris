@@ -75,7 +75,7 @@ static void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
     (uint32_t)htlod->var_entropy[ pInfo->cLeaves ];
 
   uint32_t avh = 0;
-  for(int i=0; i<pInfo->iRows -2; i++ ) // -2 skips Z and M
+  for(int i=0; i<pInfo->iActivevars; i++ )
     elavhod__avh_hash(&avh, htlod->var_entropy[ pInfo->pActive[ i ] ]);
 
   TLP_UINT rhscol = pInfo->iCols - 1;

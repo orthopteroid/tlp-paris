@@ -88,7 +88,7 @@ struct MXInfo
   double fMax, fMaxNeg;
   double fZero;
   // active set: indexed by row (ie constraint) and returns column (variable)
-  //TLP_UINT iActive;
+  TLP_UINT iActivevars;
   TLP_UINT* pActive;
   // matrix contents
   TLP_UINT iConstraints, iDefiningvars, iSlackvars;
