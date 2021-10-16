@@ -79,10 +79,10 @@ void tlp_dump_config( struct MXInfo* pInfo )
   );
 }
 
-void tlp_dump_active_vars( struct MXInfo* pInfo )
+void tlp_dump_active_cols( struct MXInfo* pInfo )
 {
   for(TLP_UINT v = 0; v < pInfo->iActivevars; v++ )
-    printf("%d ", pInfo->pActive[ v ] -1); // -1 converts cols to vars
+    printf("%d ", pInfo->pActive[ v ]);
   putchar('\n');
 }
 
@@ -398,7 +398,7 @@ tlp_pivot(
   if( !pInfo->pActive ) return tlp_rc_encode(TLP_ASSERT);
 #endif
 
-  //tlp_dump_active_vars(pInfo);
+  //tlp_dump_active_cols(pInfo);
 
   TLP_UINT rhsCol = pInfo->iCols - 1;
   TLP_UINT mRow = 0, zRow = 1;
@@ -509,7 +509,7 @@ tlp_setup_max(
   TLP_UINT constrRow = +2; // +2 to skip rows M and Z
 
 //tlp_dump_tableau( pInfo, TLP_BADINDEX, TLP_BADINDEX );
-//tlp_dump_active_vars(pInfo);
+//tlp_dump_active_cols(pInfo);
 
   // add LE rows
   for (r = 0; r < iLEConstraints; r++) {
@@ -522,7 +522,7 @@ tlp_setup_max(
     slackCol++;
     constrRow++;
 //tlp_dump_tableau( pInfo, TLP_BADINDEX, TLP_BADINDEX );
-//tlp_dump_active_vars(pInfo);
+//tlp_dump_active_cols(pInfo);
   }
 
   // add EQ rows
@@ -540,7 +540,7 @@ tlp_setup_max(
     slackCol++;
     constrRow++;
 //tlp_dump_tableau( pInfo, TLP_BADINDEX, TLP_BADINDEX );
-//tlp_dump_active_vars(pInfo);
+//tlp_dump_active_cols(pInfo);
   }
 
   return tlp_rc_encode(TLP_OK);
