@@ -31,7 +31,6 @@ void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t his
 
   htlod->rhstol = rhstol;
   htlod->iHistory = history;
-  htlod->iActiveVars = pInfo->iVars;
 
   htlod->elv = (uint32_t*)malloc( sizeof(uint32_t) * htlod->iHistory );
   memset(htlod->elv, 0, sizeof(uint32_t) * htlod->iHistory);
@@ -49,7 +48,7 @@ void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t his
   if( (fd = open("/dev/urandom", O_RDONLY)) == -1 )
     perror("Error: impossible to read randomness source\n");
 
-  size_t uVarBytes = sizeof(TLP_UINT) * htlod->iActiveVars;
+  size_t uVarBytes = sizeof(TLP_UINT) * pInfo->iCols;
   htlod->var_entropy = (TLP_UINT*)malloc( uVarBytes );
   if( read(fd, htlod->var_entropy, uVarBytes) != uVarBytes )
     perror("read() failed\n");
@@ -72,12 +71,12 @@ void elavhod_dump_history( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 static void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 {
   uint32_t elv =
-    ((uint32_t)htlod->var_entropy[ pInfo->iVarEnters ] << 16) |
-    (uint32_t)htlod->var_entropy[ pInfo->iVarLeaves ];
+    ((uint32_t)htlod->var_entropy[ pInfo->cEnters ] << 16) |
+    (uint32_t)htlod->var_entropy[ pInfo->cLeaves ];
 
   uint32_t avh = 0;
-  for(int i=0; i<htlod->iActiveVars; i++ )
-    elavhod__avh_hash(&avh, htlod->var_entropy[ pInfo->pActiveVariables[ i ] ]);
+  for(int i=0; i<pInfo->iRows -2; i++ ) // -2 skips Z and M
+    elavhod__avh_hash(&avh, htlod->var_entropy[ pInfo->pActive[ i ] ]);
 
   TLP_UINT rhscol = pInfo->iCols - 1;
   double rhs = TBMX(1, rhscol );

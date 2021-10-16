@@ -83,18 +83,19 @@ struct MXInfo
   TLP_UINT bMaximize : 1, bQuadratic : 1;
   // matrix structure
   TLP_UINT iCols, iRows;
-  TLP_UINT iVars;
-  TLP_UINT* pActiveVariables;
   double* pMatrix;
   double fMin, fMinNeg;
   double fMax, fMaxNeg;
   double fZero;
+  // active set: indexed by row (ie constraint) and returns column (variable)
+  //TLP_UINT iActive;
+  TLP_UINT* pActive;
   // matrix contents
   TLP_UINT iConstraints, iDefiningvars, iSlackvars;
   const char** szVars;
   // status
   TLP_UINT iIter;
-  TLP_UINT iVarEnters, iVarLeaves;
+  TLP_UINT cEnters, cLeaves;
 };
 
 void tlp_dump_tableau( struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1 );

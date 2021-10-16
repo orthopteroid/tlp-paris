@@ -81,8 +81,8 @@ void tlp_dump_config( struct MXInfo* pInfo )
 
 void tlp_dump_active_vars( struct MXInfo* pInfo )
 {
-  for(TLP_UINT v = 0; v < pInfo->iVars; v++ )
-    printf("%d ", pInfo->pActiveVariables[ v ]);
+  for(TLP_UINT v = 0; v < pInfo->iRows -2; v++ ) // -2 skips rows Z and M
+    printf("%d ", pInfo->pActive[ v ] -1); // -1 converts cols to vars
   putchar('\n');
 }
 
@@ -95,10 +95,10 @@ void tlp_dump_current_soln( struct MXInfo* pInfo )
 
   if( pInfo->bMaximize ) {
     for(v = 0; v < pInfo->iDefiningvars; v++ )
-      printf("%+10.4f", TBMX( pInfo->pActiveVariables[ v ] +2, rhscol ) ); // +2 skips rows M and Z
+      printf("%+10.4f", TBMX( pInfo->pActive[ v ], rhscol ) ); // +1 skips row Z
   } else {
-    for(v = 0; v < pInfo->iConstraints; v++ ) // transpose requires iConstraints
-      printf("%+10.4f", TBMX( +1, rhscol -1 -pInfo->pActiveVariables[ v ] ) ); // +1 skips row Z, -1 skips col Z, -ve for RtL
+    for(v = 0; v < pInfo->iConstraints; v++ ) // ??transpose requires iConstraints
+      printf("%+10.4f", TBMX( +1, rhscol - pInfo->pActive[ v ] ) ); // +1 skips row Z, -ve for RtoL
   }
   printf(" = %+10.4f\n", TBMX(1, rhscol ));
 }
@@ -109,11 +109,11 @@ void tlp_dump_active_soln( struct MXInfo* pInfo )
   TLP_UINT  v;
 
   if( pInfo->bMaximize ) {
-    for(v = 0; v < pInfo->iVars; v++ )
-      printf("%+10.4f", TBMX( pInfo->pActiveVariables[ v ] +2, rhscol ) ); // +2 skips rows M and Z
+    for(v = 0; v < pInfo->iRows -2; v++ ) // -2 skips M and Z
+      printf("%+10.4f", TBMX( pInfo->pActive[ v ], rhscol ) ); // +1 skips row Z
   } else {
-    for(v = 0; v < pInfo->iVars; v++ ) // transpose
-      printf("%+10.4f", TBMX( +1, rhscol -1 -pInfo->pActiveVariables[ v ] ) ); // +1 skips row Z, -1 skips col Z, -ve for RtL
+    for(v = 0; v < pInfo->iRows -2; v++ ) // -2 skips M and Z  ??transpose??
+      printf("%+10.4f", TBMX( +1, rhscol - pInfo->pActive[ v ] ) ); // +1 skips row Z, -ve for RtoL
   }
   printf(" = %+10.4f %s\n", TBMX(1, rhscol ), tlp_is_augmented( pInfo ) ? "(AUGMENTED)" : "");
 }
@@ -296,7 +296,7 @@ tlp_rowLargestNegCoef(
     TLP_UINT var = c -1; // -1 converts from col to var
 
 /*    // trivially exclude variables that are already active, review: broken!
-    for(TLP_UINT i=0; i<pInfo->iVars; i++ )
+    for(TLP_UINT i=0; i<pInfo->iActive; i++ )
       if( (pInfo->pActiveVariables[i] == var) )
         goto skip_variable_and_check_another; */ // already in active set
 
@@ -331,7 +331,7 @@ tlp_rowLargestNegCoef_QPRule(
 #endif
 
 //  printf("active variables: ");
-//  for(TLP_UINT i = 0; i<pInfo->iVars; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
+//  for(TLP_UINT i = 0; i<pInfo->iActive; i++ ) printf("%d ", pInfo->pActiveVariables[i]);
 //  putchar('\n');
 
   // due to square mx, pInfo->iConstraints count the number of complemntary variables
@@ -343,7 +343,7 @@ tlp_rowLargestNegCoef_QPRule(
     TLP_UINT var = c -1; // -1 converts from col to var
 
 /*    // trivially exclude variables that are already active
-    for(TLP_UINT i = 0; i<pInfo->iVars; i++ )
+    for(TLP_UINT i = 0; i<pInfo->iActive; i++ )
       if( (pInfo->pActiveVariables[i] == var) )
         goto skip_variable_and_check_another; */ // already in active set
 
@@ -361,7 +361,7 @@ tlp_rowLargestNegCoef_QPRule(
     // since var is group1 or group2, determine if it's complement is already active
     for(TLP_UINT i=0; i<n; i++ )
     {
-      TLP_UINT a = var, b = pInfo->pActiveVariables[i];
+      TLP_UINT a = var, b = pInfo->pActive[i] -1; // -1 skips col Z
       if( b > a )
       {
         if( b < 2 * n ) continue; // max not in group2, check another active variable
@@ -393,8 +393,10 @@ tlp_pivot(
 
 #ifndef NDEBUG
   if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
-  if( !pInfo->pActiveVariables ) return tlp_rc_encode(TLP_ASSERT);
+  if( !pInfo->pActive ) return tlp_rc_encode(TLP_ASSERT);
 #endif
+
+  //tlp_dump_active_vars(pInfo);
 
   TLP_UINT rhsCol = pInfo->iCols - 1;
   TLP_UINT mRow = 0, zRow = 1;
@@ -428,10 +430,9 @@ tlp_pivot(
   if( pivRow == TLP_BADINDEX ) return tlp_rc_encode(TLP_UNBOUNDED);
 
   // record entering/leaving variables
-  TLP_UINT rVarLeaves = pivRow -2; // -2 skips rows M and Z
-  pInfo->iVarEnters = pivCol -1; // -1 skips col Z
-  pInfo->iVarLeaves = pInfo->pActiveVariables[ rVarLeaves ];
-  pInfo->pActiveVariables[ rVarLeaves ] = pInfo->iVarEnters;
+  pInfo->cEnters = pivCol;
+  pInfo->cLeaves = pInfo->pActive[ pivRow -2 ]; // -2 skips M and Z
+  pInfo->pActive[ pivRow -2 ] = pivCol; // -2 skips M and Z
 
   // normalize row r1 by the pivot r1,c1
   if( (rc = tlp_rowdiv( pInfo, pivRow, pivCol )) ) return rc;
@@ -471,7 +472,8 @@ tlp_setup_max(
 
   pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
   pInfo->iCols = 1 + pInfo->iDefiningvars + pInfo->iSlackvars + 1; // Z, vars, slacks, RHS
-  pInfo->iVars = pInfo->iDefiningvars + pInfo->iSlackvars;
+//  pInfo->iActive = pInfo->iDefiningvars + pInfo->iSlackvars;
+//  pInfo->iActiveVars = pInfo->iSlackvars;
 
   pInfo->fMax = DBL_MAX;
   pInfo->fMaxNeg = -pInfo->fMax;
@@ -480,8 +482,8 @@ tlp_setup_max(
   pInfo->fZero = 1.0e-10;
   pInfo->szVars = szVars;
   pInfo->iIter = -1;
-  pInfo->iVarEnters = TLP_BADINDEX;
-  pInfo->iVarLeaves = TLP_BADINDEX;
+  pInfo->cEnters = TLP_BADINDEX;
+  pInfo->cLeaves = TLP_BADINDEX;
 
   unsigned long int iBytes;
 
@@ -490,9 +492,9 @@ tlp_setup_max(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
-  pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
-  memset(pInfo->pActiveVariables, 0, iBytes);
+  iBytes = sizeof(TLP_UINT) * pInfo->iRows -2; // -2 skips Z and M
+  pInfo->pActive = (TLP_UINT *) malloc(iBytes);
+  memset(pInfo->pActive, 0, iBytes);
 
   TLP_UINT c, r, v;
   TLP_UINT rhsCol = pInfo->iCols - 1; // -1 for RHS col
@@ -504,6 +506,10 @@ tlp_setup_max(
 
   TLP_UINT slackCol = iVariables + 1; // the defining variables will not be the initial basic variables, +1 to skip col Z
   TLP_UINT constrRow = +2; // +2 to skip rows M and Z
+  TLP_UINT activeCols = 0;
+
+//tlp_dump_tableau( pInfo, TLP_BADINDEX, TLP_BADINDEX );
+//tlp_dump_active_vars(pInfo);
 
   // add LE rows
   for (r = 0; r < iLEConstraints; r++) {
@@ -511,10 +517,12 @@ tlp_setup_max(
     for (c = 0; c < iVariables; c++) TBMX(constrRow, zCol + c) = LEMX(r, c);
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = LEMX(r, iVariables);
-    pInfo->pActiveVariables[ constrRow -2 ] = slackCol -1; // -2 skips rows M and Z, -1 skips col Z
+    pInfo->pActive[ activeCols++ ] = slackCol;
 
     slackCol++;
     constrRow++;
+//tlp_dump_tableau( pInfo, TLP_BADINDEX, TLP_BADINDEX );
+//tlp_dump_active_vars(pInfo);
   }
 
   // add EQ rows
@@ -523,14 +531,16 @@ tlp_setup_max(
     for (c = 0; c < iVariables; c++) TBMX(constrRow, zCol + c) = EQMX(r, c);
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = EQMX(r, iVariables);
-    pInfo->pActiveVariables[ constrRow -2 ] = slackCol -1; // -2 skips rows M and Z, -1 skips col Z
+    pInfo->pActive[ activeCols++ ] = slackCol;
 
     // add an artifical variable with M = 1 for each of the EQ constraints to the objective function
     TBMX(mRow, slackCol) = 1.0;
-    if( (rc = tlp_rowsubmul(pInfo, mRow, slackCol, constrRow)) ) return rc; // was break
+    if( (rc = tlp_rowsubmul(pInfo, mRow, slackCol, constrRow)) ) return tlp_rc_encode(TLP_INVALID); // was break
 
     slackCol++;
     constrRow++;
+//tlp_dump_tableau( pInfo, TLP_BADINDEX, TLP_BADINDEX );
+//tlp_dump_active_vars(pInfo);
   }
 
   return tlp_rc_encode(TLP_OK);
@@ -562,7 +572,8 @@ tlp_setup_min(
 
   pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
   pInfo->iCols = 1 + pInfo->iDefiningvars + pInfo->iSlackvars + 1; // Z, vars, slacks, RHS
-  pInfo->iVars = pInfo->iConstraints;
+//  pInfo->iActive = pInfo->iConstraints;
+//  pInfo->iActiveVars = pInfo->iSlackvars;
 
   pInfo->fMax = DBL_MAX;
   pInfo->fMaxNeg = -pInfo->fMax;
@@ -571,8 +582,8 @@ tlp_setup_min(
   pInfo->fZero = 1.0e-10;
   pInfo->szVars = szVars;
   pInfo->iIter = -1;
-  pInfo->iVarEnters = TLP_BADINDEX;
-  pInfo->iVarLeaves = TLP_BADINDEX;
+  pInfo->cEnters = TLP_BADINDEX;
+  pInfo->cLeaves = TLP_BADINDEX;
 
   unsigned long int iBytes;
 
@@ -581,9 +592,9 @@ tlp_setup_min(
   memset(pMXData, 0, iBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iVars;
-  pInfo->pActiveVariables = (TLP_UINT *) malloc(iBytes);
-  memset(pInfo->pActiveVariables, 0, iBytes);
+  iBytes = sizeof(TLP_UINT) * pInfo->iRows -2; // -2 skips Z and M
+  pInfo->pActive = (TLP_UINT *) malloc(iBytes);
+  memset(pInfo->pActive, 0, iBytes);
 
   TLP_UINT c, r, i, j;
   TLP_UINT rhsCol = pInfo->iCols - 1; // -1 for RHS col
@@ -596,6 +607,7 @@ tlp_setup_min(
 
   TLP_UINT slackCol = pInfo->iDefiningvars + 1; // the defining variables will not be the initial basic variables, +1 to skip col Z
   TLP_UINT constrRow = +2; // +2 to skip rows M and Z
+  TLP_UINT activeCols = 0;
 
   // add GE rows
   for (j = 0; j < iGEConstraints; j++)
@@ -605,7 +617,7 @@ tlp_setup_min(
     for (i = 0; i < iGEConstraints; i++) TBMX(constrRow, c + i) = GEMX(i, j); // transposed read
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = pOBJMX[ j ];
-    pInfo->pActiveVariables[ constrRow -2 ] = slackCol -1; // -2 skips rows M and Z, -1 skips col Z
+    pInfo->pActive[ activeCols++ ] = slackCol;
 
     slackCol++;
     constrRow++;
@@ -619,7 +631,7 @@ tlp_setup_min(
     for (i = 0; i < iEQConstraints; i++) TBMX(constrRow, c + i) = EQMX(i, j); // transposed read
     TBMX(constrRow, slackCol) = 1.0;
     TBMX(constrRow, rhsCol) = pOBJMX[ j ];
-    pInfo->pActiveVariables[ constrRow -2 ] = slackCol -1; // -2 skips rows M and Z, -1 skips col Z
+    pInfo->pActive[ activeCols++ ] = slackCol;
 
     // add an artifical variable with M = 1 for each of the EQ constraints to the objective function
     TBMX(mRow, slackCol) = 1.0;
@@ -641,16 +653,16 @@ tlp_soln(
   TLP_UINT v;
 
   if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
-  if( !pInfo->pActiveVariables ) return tlp_rc_encode(TLP_ASSERT);
+  if( !pInfo->pActive ) return tlp_rc_encode(TLP_ASSERT);
 
   TLP_UINT rhscol = pInfo->iCols - 1;
 
   if( pInfo->bMaximize ) {
     for(v = 0; v < pInfo->iDefiningvars; v++ )
-      pSOLMX[ v ] = TBMX( pInfo->pActiveVariables[ v ] +2, rhscol ); // +2 skips rows M and Z
+      pSOLMX[ v ] = TBMX( pInfo->pActive[ v ] +1, rhscol ); // +1 skips row Z
   } else {
     for(v = 0; v < pInfo->iConstraints; v++ ) // transpose requires iConstraints
-      pSOLMX[ v ] = TBMX( +1, rhscol -1 -pInfo->pActiveVariables[ v ] ); // +1 skips row Z, -1 skips col Z, -ve for RtL
+      pSOLMX[ v ] = TBMX( +1, rhscol - pInfo->pActive[ v ] ); // +1 skips row Z, -ve for RtL
   }
   pSOLMX[ pInfo->iDefiningvars ] = TBMX(1, rhscol );
 
@@ -667,8 +679,8 @@ tlp_fini(
   if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
 
   // cleanup tableau
-  if( pInfo->pActiveVariables )
-    free( pInfo->pActiveVariables ); // tokens
+  if( pInfo->pActive )
+    free( pInfo->pActive ); // tokens
   if( pInfo->pMatrix )
     free( pInfo->pMatrix ); // doubles
   memset( pInfo, 0, sizeof(struct MXInfo) );
@@ -679,13 +691,20 @@ tlp_fini(
 int tlp_is_augmented( struct MXInfo* pInfo )
 {
   if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
-  if( !pInfo->pActiveVariables ) return tlp_rc_encode(TLP_ASSERT);
+  if( !pInfo->pActive ) return tlp_rc_encode(TLP_ASSERT);
 
   TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
+  TLP_UINT rhscol = pInfo->iCols - 1;
 
-  // check if any of the active variables are slacks
-  for(TLP_UINT i=0; i<pInfo->iVars; i++)
-    if( pInfo->pActiveVariables[ i ] >= n ) return 1;
+  // check if any of the active variables are non-zero slacks
+  for(TLP_UINT i=0; i<pInfo->iRows -2; i++) // -2 skips Z and M
+    if( pInfo->pActive[ i ] -1 >= n )  // -1 skips col Z
+    {
+      if( TLP_ALMOSTZERO( TBMX( pInfo->pActive[ i ] -1, rhscol ) ) ) // -1 skips col Z
+        continue;
+      else
+        return 1;
+    }
 
   return 0;
 }
