@@ -19,10 +19,11 @@
 ///////////////
 // elavh oscillation detector
 
-static inline void elavhod__avh_hash(uint32_t* h, TLP_UINT v)
+static inline uint32_t elavhod__avh_hash(uint32_t h, TLP_UINT v)
 {
-  *h ^= (*h >> 1) + (uint32_t)v;
-  *h += (uint32_t)v << 15;
+  h ^= (h >> 1) + (uint32_t)v;
+  h += (uint32_t)v << 15;
+  return h;
 }
 
 void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t history, double rhstol )
@@ -76,7 +77,7 @@ static void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 
   uint32_t avh = 0;
   for(int i=0; i<pInfo->iActivevars; i++ )
-    elavhod__avh_hash(&avh, htlod->var_entropy[ pInfo->pActive[ i ] ]);
+    avh = elavhod__avh_hash(avh, htlod->var_entropy[ pInfo->pActive[ i ] ]);
 
   TLP_UINT rhscol = pInfo->iCols - 1;
   double rhs = TBMX(1, rhscol );
