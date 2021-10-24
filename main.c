@@ -108,14 +108,15 @@ tlp_dump_tableau( &mx2, 3, 8 );
 printf("%f\n",d);
       assert( d > 0. );
 
+    elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
     while( 1 )
     {
       rc = tlp_pivot( &mx2 );
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
 
-//      rc = elavhod_check( &mxInfo, &htlod );
-//      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
+      rc = elavhod_check( &mx2, &htlod );
+      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
 
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       //if( !tlp_is_augmented(&mx2) ) { printf("FEASIBLE SOLUTION\n"); tlp_dump_current_soln(&mx2); }
@@ -126,7 +127,7 @@ printf("%f\n",d);
     }
 //    tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
 //    rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
-//    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
+    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
     rc = tlp_soln(&mx2, mxsol);
     printf("tlp_soln %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
 
@@ -135,7 +136,7 @@ printf("%f\n",d);
 
     mx2.pActive = 0; mx2.pMatrix = 0; // hack: workaround non-dynamic allocations
     rc = tlp_fini(&mx2); CHECK;
-//    elavhod_fin( &mx2, &htlod  );
+    elavhod_fin( &mx2, &htlod  );
   }
 
   printf("----- LP minimize. line %d\n", __LINE__);
