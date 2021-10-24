@@ -19,10 +19,25 @@
 ///////////////
 // elavh oscillation detector
 
-static inline uint32_t elavhod__avh_hash(uint32_t h, TLP_UINT v)
+// https://cessu.blogspot.com/2008/11/hashing-with-sse2-revisited-or-my-hash.html
+// kudos: Cessu
+static inline uint64_t elavhod__hash_64x32(uint64_t h, uint32_t v)
 {
-  h ^= (h >> 1) + (uint32_t)v;
-  h += (uint32_t)v << 15;
+  h ^= 2857720171ULL * v;
+  h ^= h >> 29;
+  h += h << 16;
+  h ^= h >> 21;
+  h += h << 32;
+  return h;
+}
+
+static inline uint32_t elavhod__hash_32x16(uint32_t h, uint16_t v)
+{
+  h ^= 43691UL * v;
+  h ^= h >> 13;
+  h += h << 8;
+  h ^= h >> 10;
+  h += h << 16;
   return h;
 }
 
@@ -33,11 +48,8 @@ void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t his
   htlod->rhstol = rhstol;
   htlod->iHistory = history;
 
-  htlod->elv = (uint32_t*)malloc( sizeof(uint32_t) * htlod->iHistory );
-  memset(htlod->elv, 0, sizeof(uint32_t) * htlod->iHistory);
-
-  htlod->avh = (uint32_t*)malloc( sizeof(uint32_t) * htlod->iHistory );
-  memset(htlod->avh, 0, sizeof(uint32_t) * htlod->iHistory);
+  htlod->history = (uint64_t*)malloc( sizeof(uint64_t) * htlod->iHistory );
+  memset(htlod->history, 0, sizeof(uint64_t) * htlod->iHistory);
 
   htlod->rhs = (double*)malloc( sizeof(double) * htlod->iHistory );
   memset(htlod->rhs, 0, sizeof(double) * htlod->iHistory);
@@ -63,28 +75,26 @@ void elavhod_dump_history( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
   {
     int j = ( pInfo->iIter + (htlod->iHistory -i) ) % htlod->iHistory;
     printf(
-      "%6d  %08X  %08X  %+10.4f\n",
-      pInfo->iIter - i, htlod->elv[ j ], htlod->avh[ j ], htlod->rhs[ j ]
+      "%6d  %08lX  %+10.4f\n",
+      pInfo->iIter - i, htlod->history[ j ], htlod->rhs[ j ]
     );
   }
 }
 
 static void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 {
-  uint32_t elv =
-    ((uint32_t)htlod->var_entropy[ pInfo->cEnters ] << 16) |
-    (uint32_t)htlod->var_entropy[ pInfo->cLeaves ];
+  uint64_t elavh = 0;
+  elavh = elavhod__hash_64x32(elavh, (uint32_t)pInfo->cEnters);
+  elavh = elavhod__hash_64x32(elavh, (uint32_t)pInfo->cLeaves);
 
-  uint32_t avh = 0;
   for(int i=0; i<pInfo->iActivevars; i++ )
-    avh = elavhod__avh_hash(avh, htlod->var_entropy[ pInfo->pActive[ i ] ]);
+    elavh = elavhod__hash_64x32(elavh, (uint32_t)pInfo->pActive[ i ]);
 
   TLP_UINT rhscol = pInfo->iCols - 1;
   double rhs = TBMX(1, rhscol );
 
   int j = pInfo->iIter % htlod->iHistory;
-  htlod->elv[ j ] = elv;
-  htlod->avh[ j ] = avh;
+  htlod->history[ j ] = elavh;
   htlod->rhs[ j ] = rhs;
 }
 
@@ -93,10 +103,9 @@ static int elavhod_detect( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
   int j = pInfo->iIter % htlod->iHistory;
   for(int i=0; i<htlod->iHistory; i++)
     if( i != j )
-      if( htlod->elv[ j ] == htlod->elv[ i ] )
-        if( htlod->avh[ j ] == htlod->avh[ i ] )
-          if( EQUAL( htlod->rhs[ j ], htlod->rhs[ i ], htlod->rhstol ) )
-            return 1;
+      if( htlod->history[ j ] == htlod->history[ i ] )
+        if( EQUAL( htlod->rhs[ j ], htlod->rhs[ i ], htlod->rhstol ) )
+          return 1;
 
   return 0;
 }
@@ -111,8 +120,7 @@ TLP_RCCODE elavhod_check( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
 void elavhod_fin( struct MXInfo *pInfo, struct ELAVHODInfo *htlod  )
 {
   free(htlod->var_entropy);
-  free(htlod->elv);
-  free(htlod->avh);
+  free(htlod->history);
   free(htlod->rhs);
 }
 

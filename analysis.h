@@ -15,8 +15,7 @@ struct ELAVHODInfo
   double rhstol;
   int iHistory;
   TLP_UINT *var_entropy; // use entropy instead of var index number
-  uint32_t *elv; // enter leave values
-  uint32_t *avh; // active variable hashes
+  uint64_t *history; // hash history of entering, leaving and active variables
   double *rhs; // rhsides
 };
 
