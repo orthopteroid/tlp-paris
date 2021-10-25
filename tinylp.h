@@ -113,6 +113,14 @@ tlp_setup_max(
 );
 
 TLP_RCCODE
+tlp_setup_max_qlp(
+  struct MXInfo* pInfo,
+  const double* pOBJMX, TLP_UINT iVariables,
+  const double* pLEMX, TLP_UINT iLEConstraints,
+  const char** szVars
+);
+
+TLP_RCCODE
 tlp_setup_min(
   struct MXInfo* pInfo,
   const double* pOBJMX, TLP_UINT iVariables,

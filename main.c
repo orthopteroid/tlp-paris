@@ -40,74 +40,17 @@ int main()
     // x1  x3   rhs
       1.,  2.,  30.,
     };
+    const char* vars[] = {"x1", "x2"};
 
-    // QLP maximization by maximizing the -F' KKT minimization problem [H&L ed7 p687]
-    // max -F' == z1 + z2
-    // st Q1 == -2*Q[1,1]*x1 -2*Q[1,2]*x2 + G[1]*u1 - y1 = 15
-    // st Q2 == -2*Q[2,1]*x1 -2*Q[2,2]*x2 + G[2]*u1 - y2 = 30
-    // st G' == 1*x1 + 2*x2 + v1 = 30
-    // st variable selection ensures x1y1 + x2y2 + u1v1 = 0
-    //
-    // rows = M + Z + #variables + #constraints
-    // columns = Z + #quadratics + #lagranges + #slacks + #artificals + rhs
-    //  Z       x1      x2       u1   y1  y2  v1  z1  z2  rhs
-    //  0       0       0         0    0   0  0   0   0   rhs, M
-    // -1       0       0         0    0   0  0   1   1   rhs, Z, -1 constructs -F' problem
-    //  0  -2*Q[1,1] -2*Q[1,2]  G[1]  -1   0  0   1   0   rhs, Q1
-    //  0  -2*Q[2,1] -2*Q[2,2]  G[2]   0  -1  0   0   1   rhs, Q2
-    //  0     G[1]     G[2]                   1           rhs, G`
-    // where:
-    // y1, y2 are (negated) slacks that convert Q1 & Q2 from KKT <= into LP =
-    // z1, z2 are artificals to minimize F'
-    // u1, v1 are created from constaint G1 (u is lagrange coefs and v is a slack)
-    // p688 shows mx differences... two phase method? p144
-    const char* vars[] = {"x1", "x2", "u1"};
-    double mx[] = {
-    // Z    x1   x2    u1   y1   y2   v1   z1   z2  rhs
-       0.,  0.,   0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., // M
-      -1.,  0.,   0.,  0.,  0.,  0.,  0.,  1.,  1.,  0., // Z, -1 constructs -F' problem
-       0., +4.,  -4.,  1., -1.,  0.,  0.,  1.,  0., 15., // Q1
-       0., -4.,  +8.,  2.,  0., -1.,  0.,  0.,  1., 30., // Q2
-       0.,  1.,   2.,  0.,  0.,  0.,  1.,  0.,  0., 30., // G1'
-    };
     double mxsol[] = { 0, 0, 0, };
     double mxver[] = { 12., 9., 0, }; // x1 x2 rhs
-    TLP_UINT activecols[ 3 ] = {6,7,8}; // constraints-slacks + z-slacks: v1 z1 z2
-    struct MXInfo mx2 = {
-.bMaximize = 1,
-.bQuadratic = 1,
-.iDefiningvars = 2, // x1 x2
-.iConstraints = 2 + 1, // variables + contraints: Q1 Q2 G1' or x1 x2 G1'
-.iSlackvars = 4 + 1, // 2 * variables + constraints: y1 y2 z1 z2 v1
-.iActivevars = 3, // constraints-slacks + z-slacks: v1 z1 z2
-.iRows = +1 +1 +2 +1, // +M +Z +Q1 +Q2 + contraints
-.iCols = +1 +6 +2 +1, // +Z + 3 * variables + 2 * contraints +rhs. *3 since every variable needs x,y,z. *2 since every constraint needs u,v
-.pActive = activecols,
-.pMatrix = mx,
-.fMin = 1e-99, .fMinNeg = -1e-99,
-.fMax = 1e99, .fMaxNeg = -1e99,
-.fZero = 1e-10,
-.szVars = vars,
-.iIter = -1,
-.cEnters = ~0, .cLeaves = ~0,
-    };
-printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
-printf("initial form\n");
-tlp_dump_tableau( &mx2, 0, 0 );
 
-rc = tlp_rowsubmul(&mx2, 1, 7, 2); // factor z1 from Q1
-printf("%s: rc = %X\n","factor z1 from Q1",tlp_rc_decode(rc));
-tlp_dump_tableau( &mx2, 2, 7 );
+    double d = determinant( &mxobj[2] /* read quadratic part only */, 2 );
+    if(d<=0.) { printf("bad obj Q terms"); return -1; }
 
-rc = tlp_rowsubmul(&mx2, 1, 8, 3); // factor z2 from Q2
-printf("%s: rc = %X\n","factor z2 from Q2",tlp_rc_decode(rc));
-tlp_dump_tableau( &mx2, 3, 8 );
-
-    {
-      double d = determinant( &mxobj[2] /* read quadratic part only */, 2 );
-printf("%f\n",d);
-      assert( d > 0. );
-
+    rc = tlp_setup_max_qlp(&mx2, mxobj, 2, mxLE, 1, (const char**)&vars); CHECK;
+    printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
+    tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
     elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
     while( 1 )
     {
@@ -124,9 +67,8 @@ printf("%f\n",d);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
 
-    }
-//    tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
-//    rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
+    //tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
+    //rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
     if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
     rc = tlp_soln(&mx2, mxsol);
     printf("tlp_soln %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
@@ -134,7 +76,8 @@ printf("%f\n",d);
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double));
     printf("tlp_mxequal %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
 
-    mx2.pActive = 0; mx2.pMatrix = 0; // hack: workaround non-dynamic allocations
+    //double objval = tlp_eval_qlp(&mx2, mxobj);
+
     rc = tlp_fini(&mx2); CHECK;
     elavhod_fin( &mx2, &htlod  );
   }

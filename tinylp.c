@@ -547,6 +547,126 @@ tlp_setup_max(
 }
 
 TLP_RCCODE
+tlp_setup_max_qlp(
+  struct MXInfo* pInfo,
+  const double* pOBJMX, TLP_UINT iVariables,
+  const double* pLEMX, TLP_UINT iLEConstraints,
+  const char** szVars
+)
+{
+  // QLP maximization by maximizing the -F' KKT minimization problem [H&L ed7 p687]
+  // max -F' == z1 + z2
+  // st Q1 == -2*Q[1,1]*x1 -2*Q[1,2]*x2 + G[1]*u1 - y1 = 15
+  // st Q2 == -2*Q[2,1]*x1 -2*Q[2,2]*x2 + G[2]*u1 - y2 = 30
+  // st G' == 1*x1 + 2*x2 + v1 = 30
+  // st variable selection ensures x1y1 + x2y2 + u1v1 = 0
+  //
+  // rows = M + Z + #variables + #constraints
+  // columns = Z + #quadratics + #lagranges + #slacks + #artificals + rhs
+  //  Z       x1      x2       u1   y1  y2  v1  z1  z2  rhs
+  //  0       0       0         0    0   0  0   0   0     0, M
+  // -1       0       0         0    0   0  0   1   1     0, Z, -1 constructs -F' problem
+  //  0  -2*Q[1,1] -2*Q[1,2]  G[1]  -1   0  0   1   0   rhs, Q1
+  //  0  -2*Q[2,1] -2*Q[2,2]  G[2]   0  -1  0   0   1   rhs, Q2
+  //  0     G[1]     G[2]                   1           rhs, G`
+  // where:
+  // y1, y2 are (negated) slacks that convert Q1 & Q2 from KKT <= into LP =
+  // z1, z2 are artificals to minimize F'
+  // u1, v1 are created from constaint G1 (u is lagrange coefs and v is a slack)
+  // p688 shows mx differences... two phase method? p144
+  TLP_RCCODE rc;
+
+  if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
+  if( !pOBJMX || (iVariables<2) ) return tlp_rc_encode(TLP_ASSERT);
+  if( iLEConstraints && !pLEMX ) return tlp_rc_encode(TLP_ASSERT);
+
+  pInfo->bMaximize = 1;
+  pInfo->bQuadratic = 1;
+
+  pInfo->iDefiningvars = iVariables;
+  pInfo->iConstraints = iVariables + iLEConstraints;
+  pInfo->iSlackvars = 2 * iVariables + iLEConstraints; // y's and z's for variables and v's for constr
+  pInfo->iActivevars = iLEConstraints + iVariables; // constraints-slacks + z-slacks: v1 z1 z2
+
+  pInfo->iRows = 1 + 1 + pInfo->iConstraints; // rows M, Z and constraints
+  pInfo->iCols = +1 /*Z*/ + 3*iVariables /*every variable needs x, y, z*/ + 2*iLEConstraints /*every constr needs u, v*/ +1 /*rhs*/ ;
+
+  pInfo->fMax = DBL_MAX;
+  pInfo->fMaxNeg = -pInfo->fMax;
+  pInfo->fMin = DBL_MIN;
+  pInfo->fMinNeg = -pInfo->fMin;
+  pInfo->fZero = 1.0e-10;
+  pInfo->szVars = szVars;
+  pInfo->iIter = -1;
+  pInfo->cEnters = TLP_BADINDEX;
+  pInfo->cLeaves = TLP_BADINDEX;
+
+  unsigned long int iBytes;
+
+  iBytes = sizeof(double) * pInfo->iRows * pInfo->iCols;
+  double *pMXData = aligned_alloc(16, iBytes);
+  memset(pMXData, 0, iBytes);
+  pInfo->pMatrix = pMXData;
+
+  iBytes = sizeof(TLP_UINT) * pInfo->iActivevars;
+  pInfo->pActive = (TLP_UINT *) malloc(iBytes);
+  memset(pInfo->pActive, 0, iBytes);
+
+  int iDefiningconst = pInfo->iConstraints -pInfo->iDefiningvars; // -iDefiningVars because QP problem treats Q rows as constr
+  int rowZ = 1;
+  int rowQ = 2;
+  int rowG = +1 +1 +pInfo->iDefiningvars; // +1 for rowM, +1 rowZ, +iDefiningvars for Q rows
+  int colQ = 1;
+  int colU = +1 + pInfo->iDefiningvars; // +1 skips colZ
+  int colY = colU + iDefiningconst;
+  int colV = colY + pInfo->iDefiningvars;
+  int colZ = colV + iDefiningconst;
+  int rhs = colZ + pInfo->iDefiningvars;
+
+#define _MZ(_r,_c) (pMXData[(_r) * pInfo->iCols + (_c)])
+#define _MQ(_r,_c) (pOBJMX[iVariables + ((_r) * iVariables + (_c))]) // Q starts after linear terms
+
+  // construct -F' problem
+  _MZ(1,0) = -1;
+
+  // add objective dependencies
+  for(int n=0; n<pInfo->iDefiningvars; n++)
+  {
+    for(int i=0; i<pInfo->iDefiningvars; i++) _MZ(rowQ+n, colQ+i) = -2. * _MQ(n, i); // quadratic coefs
+    _MZ(rowQ+n, rhs) = pOBJMX[n]; // linear term to rhs
+    _MZ(rowQ+n, colY+n) = -1.; // negated slack for KKT
+    _MZ(rowZ,   colZ+n) = 1.; // z artificial for rowZ
+    _MZ(rowQ+n, colZ+n) = 1.; // z artificial for rowQn
+  }
+
+  // add constraint dependencies
+  for(int n=0; n<iDefiningconst; n++)
+  {
+    for(int i=0; i<pInfo->iDefiningvars; i++)
+    {
+      _MZ(rowQ+i, colU+n) = pLEMX[i]; // colUn constraint terms
+      _MZ(rowG+n, colQ+i) = pLEMX[i]; // rowGn constraint term
+    }
+    _MZ(rowG+n, colV+n) = 1.; // v slack for Gn'
+    _MZ(rowG+n, rhs) = pLEMX[pInfo->iDefiningvars]; // constraint rhs
+  }
+
+#undef _MZ
+#undef _MQ
+
+  //tlp_dump_tableau( pInfo, 0, 0 );
+
+  // factor the z slacks
+  for(int n=0; n<pInfo->iDefiningvars; n++)
+  {
+    rc = tlp_rowsubmul(pInfo, rowZ, colZ+n, rowQ+n); // factor zn from Qn
+    //printf("%d %s\n",__LINE__,tlp_messages[tlp_rc_decode(rc)]);
+  }
+
+  return tlp_rc_encode(TLP_OK);
+}
+
+TLP_RCCODE
 tlp_setup_min(
   struct MXInfo* pInfo,
   const double* pOBJMX, TLP_UINT iVariables,
