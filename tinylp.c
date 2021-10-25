@@ -22,6 +22,9 @@
 // access simplex tableau
 #define TBMX(_r, _c ) ( pInfo->pMatrix[ (_r) * pInfo->iCols + (_c) ] )
 
+// quadratic terms of obj fnx
+#define QMX(_r,_c) (pOBJMX[iVariables + ((_r) * iVariables + (_c))]) // Q starts after linear terms
+
 ///////////////////////////////////////
 
 #ifndef NDEBUG
@@ -623,20 +626,17 @@ tlp_setup_max_qlp(
   int colZ = colV + iDefiningconst;
   int rhs = colZ + pInfo->iDefiningvars;
 
-#define _MZ(_r,_c) (pMXData[(_r) * pInfo->iCols + (_c)])
-#define _MQ(_r,_c) (pOBJMX[iVariables + ((_r) * iVariables + (_c))]) // Q starts after linear terms
-
   // construct -F' problem
-  _MZ(1,0) = -1;
+  TBMX(1,0) = -1;
 
   // add objective dependencies
   for(int n=0; n<pInfo->iDefiningvars; n++)
   {
-    for(int i=0; i<pInfo->iDefiningvars; i++) _MZ(rowQ+n, colQ+i) = -2. * _MQ(n, i); // quadratic coefs
-    _MZ(rowQ+n, rhs) = pOBJMX[n]; // linear term to rhs
-    _MZ(rowQ+n, colY+n) = -1.; // negated slack for KKT
-    _MZ(rowZ,   colZ+n) = 1.; // z artificial for rowZ
-    _MZ(rowQ+n, colZ+n) = 1.; // z artificial for rowQn
+    for(int i=0; i<pInfo->iDefiningvars; i++) TBMX(rowQ+n, colQ+i) = -2. * QMX(n, i); // quadratic coefs
+    TBMX(rowQ+n, rhs) = pOBJMX[n]; // linear term to rhs
+    TBMX(rowQ+n, colY+n) = -1.; // negated slack for KKT
+    TBMX(rowZ,   colZ+n) = 1.; // z artificial for rowZ
+    TBMX(rowQ+n, colZ+n) = 1.; // z artificial for rowQn
   }
 
   // add constraint dependencies
@@ -644,15 +644,12 @@ tlp_setup_max_qlp(
   {
     for(int i=0; i<pInfo->iDefiningvars; i++)
     {
-      _MZ(rowQ+i, colU+n) = pLEMX[i]; // colUn constraint terms
-      _MZ(rowG+n, colQ+i) = pLEMX[i]; // rowGn constraint term
+      TBMX(rowQ+i, colU+n) = pLEMX[i]; // colUn constraint terms
+      TBMX(rowG+n, colQ+i) = pLEMX[i]; // rowGn constraint term
     }
-    _MZ(rowG+n, colV+n) = 1.; // v slack for Gn'
-    _MZ(rowG+n, rhs) = pLEMX[pInfo->iDefiningvars]; // constraint rhs
+    TBMX(rowG+n, colV+n) = 1.; // v slack for Gn'
+    TBMX(rowG+n, rhs) = pLEMX[pInfo->iDefiningvars]; // constraint rhs
   }
-
-#undef _MZ
-#undef _MQ
 
   //tlp_dump_tableau( pInfo, 0, 0 );
 
