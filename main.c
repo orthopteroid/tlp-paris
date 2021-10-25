@@ -62,8 +62,7 @@ int main()
       if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
 
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-      //if( !tlp_is_augmented(&mx2) ) { printf("FEASIBLE SOLUTION\n"); tlp_dump_current_soln(&mx2); }
-      tlp_dump_active_soln(&mx2); // for QP, result is always augmented
+      tlp_dump_current_soln(&mx2); // for QP, result is always augmented
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
 
@@ -76,7 +75,7 @@ int main()
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double));
     printf("tlp_mxequal %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
 
-    //double objval = tlp_eval_qlp(&mx2, mxobj);
+    //double objval = tlp_eval_qlp(&mx2, mxobj); // TODO
 
     rc = tlp_fini(&mx2); CHECK;
     elavhod_fin( &mx2, &htlod  );
@@ -110,7 +109,7 @@ int main()
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
-      if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
+      tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
@@ -208,7 +207,7 @@ int main()
       if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
 
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-      if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
+      tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
@@ -256,7 +255,7 @@ int main()
       if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
 
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-      if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
+      tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
@@ -294,7 +293,7 @@ int main()
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-      if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
+      tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
@@ -331,7 +330,7 @@ int main()
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
-      if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
+      tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
@@ -367,7 +366,7 @@ int main()
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
       tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
-      if( tlp_is_augmented(&mx2) ) printf("AUGMENTED\n"); else tlp_dump_current_soln(&mx2);
+      tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );

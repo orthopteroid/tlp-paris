@@ -13,6 +13,7 @@
 
 #define TLP_EQUAL(a,b) (fabs((a)-(b)) < (pInfo->fZero))
 #define TLP_ALMOSTZERO(a) (fabs(a) < (pInfo->fZero))
+#define TLP_NONZERO(a) (fabs(a) > (pInfo->fZero))
 
 // read source mx
 #define LEMX(_r, _c ) ( pLEMX[ (_r) * (iVariables +1) + (_c) ] )
@@ -91,34 +92,48 @@ void tlp_dump_active_cols( struct MXInfo* pInfo )
 
 void tlp_dump_current_soln( struct MXInfo* pInfo )
 {
-  if( tlp_is_augmented( pInfo ) ) { printf("AUGMENTED\n"); return; }
-
-  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;  // the first ones are the defining vars
   TLP_UINT rhscol = pInfo->iCols - 1;
-  TLP_UINT v;
+  TLP_UINT v, r;
 
   if( pInfo->bMaximize ) {
-    for(v = 0; v < n; v++ )
-      printf("%+10.4f", TBMX( pInfo->pActive[ v ] +1, rhscol ) ); // +1 skips row Z
+    for(v = 0; v < pInfo->iDefiningvars; v++ ) {
+      r = pInfo->pActive[ v ] +1; // +1 skips row M
+      if(r < pInfo->iRows)
+        printf("%+10.4f", TBMX( r, rhscol ) );
+      else
+        printf("%+10.4f", NAN );
+    }
   } else {
-    for(v = 0; v < n; v++ )
-      printf("%+10.4f", TBMX( +1, rhscol - pInfo->pActive[ v ] ) ); // +1 skips row Z, -ve for RtoL
+    for(v = 0; v < pInfo->iConstraints; v++ ) {
+      if(pInfo->pActive[ v ] < rhscol) // review
+        printf("%+10.4f", TBMX( +1, rhscol - pInfo->pActive[ v ] ) ); // +1 skips row M, -ve for RtoL
+      else
+        printf("%+10.4f", NAN );
+    }
   }
-  printf(" = %+10.4f\n", TBMX(1, rhscol ));
+  printf(" = %+10.4f %s\n", TBMX(1, rhscol ), tlp_is_augmented( pInfo ) ? "(AUGMENTED)" : "");
 }
 
 void tlp_dump_active_soln( struct MXInfo* pInfo )
 {
-  TLP_UINT n = pInfo->iActivevars;
   TLP_UINT rhscol = pInfo->iCols - 1;
-  TLP_UINT v;
+  TLP_UINT v, r;
 
   if( pInfo->bMaximize ) {
-    for(v = 0; v < n; v++ )
-      printf("%+10.4f", TBMX( pInfo->pActive[ v ] +1, rhscol ) ); // +1 skips row Z
+    for(v = 0; v <pInfo->iActivevars; v++ ) {
+      r = pInfo->pActive[ v ] +1; // +1 skips row M
+      if(r < pInfo->iRows)
+        printf("%+10.4f", TBMX( r, rhscol ) );
+      else
+        printf("%+10.4f", NAN );
+    }
   } else {
-    for(v = 0; v < n; v++ )
-      printf("%+10.4f", TBMX( +1, rhscol - pInfo->pActive[ v ] ) ); // +1 skips row Z, -ve for RtoL
+    for(v = 0; v <pInfo->iActivevars; v++ ) {
+      if(pInfo->pActive[ v ] < rhscol) // review
+        printf("%+10.4f", TBMX( +1, rhscol - pInfo->pActive[ v ] ) ); // +1 skips row M, -ve for RtoL
+      else
+        printf("%+10.4f", NAN );
+    }
   }
   printf(" = %+10.4f %s\n", TBMX(1, rhscol ), tlp_is_augmented( pInfo ) ? "(AUGMENTED)" : "");
 }
@@ -660,6 +675,12 @@ tlp_setup_max_qlp(
     //printf("%d %s\n",__LINE__,tlp_messages[tlp_rc_decode(rc)]);
   }
 
+  // set slacks as first active variables
+  for(int i=0; i<pInfo->iActivevars; i++)
+  {
+    pInfo->pActive[i] = colV+i; // slacks are all colV and all colZ
+  }
+
   return tlp_rc_encode(TLP_OK);
 }
 
@@ -765,20 +786,18 @@ tlp_soln(
   double* pSOLMX
 )
 {
-  TLP_UINT v;
-
   if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
   if( !pInfo->pActive ) return tlp_rc_encode(TLP_ASSERT);
 
-  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
   TLP_UINT rhscol = pInfo->iCols - 1;
+  TLP_UINT v;
 
   if( pInfo->bMaximize ) {
-    for(v = 0; v < n; v++ )
-      pSOLMX[ v ] = TBMX( pInfo->pActive[ v ] +1, rhscol ); // +1 skips row Z
+    for(v = 0; v < pInfo->iDefiningvars; v++ )
+      pSOLMX[ v ] = TBMX( pInfo->pActive[ v ] +1, rhscol ); // +1 skips row M
   } else {
-    for(v = 0; v < n; v++ )
-      pSOLMX[ v ] = TBMX( +1, rhscol - pInfo->pActive[ v ] ); // +1 skips row Z, -ve for RtL
+    for(v = 0; v < pInfo->iConstraints; v++ )
+      pSOLMX[ v ] = TBMX( +1, rhscol - pInfo->pActive[ v ] ); // +1 skips row M, -ve for RtL
   }
   pSOLMX[ pInfo->iDefiningvars ] = TBMX(1, rhscol );
 
@@ -809,18 +828,25 @@ int tlp_is_augmented( struct MXInfo* pInfo )
   if( !pInfo ) return tlp_rc_encode(TLP_ASSERT);
   if( !pInfo->pActive ) return tlp_rc_encode(TLP_ASSERT);
 
-  TLP_UINT n = pInfo->bMaximize ? pInfo->iDefiningvars : pInfo->iConstraints;
   TLP_UINT rhscol = pInfo->iCols - 1;
 
+//printf("[ ");
+//for(int i=0; i<pInfo->iActivevars; i++) printf("AC %d ", pInfo->pActive[i]);
+//printf("]");
+
+  // review
   // check if any of the active variables are non-zero slacks
-  for(TLP_UINT i=0; i<pInfo->iActivevars; i++)
-    if( pInfo->pActive[ i ] -1 >= n )  // -1 skips col Z
-    {
-      if( TLP_ALMOSTZERO( TBMX( pInfo->pActive[ i ] -1, rhscol ) ) ) // -1 skips col Z
-        continue;
-      else
-        return 1;
+  for(TLP_UINT i=0; i<pInfo->iActivevars; i++) {
+    if(pInfo->bMaximize) {
+      if( pInfo->pActive[ i ] -1 < pInfo->iDefiningvars ) continue; // -1 convs from col to idx
+      if( pInfo->pActive[ i ] +1 >= pInfo->iRows ) return 1; // +1 skips row M
+      if( TLP_NONZERO( TBMX( pInfo->pActive[ i ] +1, rhscol ) ) ) return 1; // +1 skips row M
+    } else {
+      if( pInfo->pActive[ i ] -1 < pInfo->iConstraints ) continue; // -1 convs from col to idx
+      if( pInfo->pActive[ i ] >= pInfo->iCols ) return 1;
+      if( TLP_NONZERO( TBMX( +1, rhscol - pInfo->pActive[ i ] ) ) ) return 1; // +1 skips row M, -ve for RtL
     }
+  }
 
   return 0;
 }
