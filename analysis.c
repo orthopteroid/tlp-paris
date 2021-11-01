@@ -137,17 +137,18 @@ int test_is_concave(double* vecX, double* mxCoef, TLP_UINT size)
   return sum >= 0 ? 1 : 0;
 }
 
-#define GMX(r,c) mx[(r) * (n +1) + (c)]
+#define GMX(r,c) mx[(r) * (rows +1) + (c)]
 
-void gauss(double* soln, double* mx, int n)
+TLP_RCCODE gauss(double* soln, double* mx, int rows)
 {
-  int * pivotrows = (int*)malloc(n * sizeof(int));
-  int * solnrows = (int*)malloc(n * sizeof(int));
-  for(int i=0; i<n; i++) pivotrows[i] = i;
-  for(int i=0; i<n; i++) solnrows[i] = -1;
-  int pivots = n;
+  TLP_RCCODE rc = tlp_rc_encode(TLP_OK);
+  int * pivotrows = (int*)malloc(rows * sizeof(int));
+  int * solnrows = (int*)malloc(rows * sizeof(int));
+  for(int i=0; i<rows; i++) pivotrows[i] = i;
+  for(int i=0; i<rows; i++) solnrows[i] = -1;
+  int pivots = rows;
 
-  for(int i=0; i<n; i++)
+  for(int i=0; i<rows; i++)
   {
     // for column i, find row with biggest pivot and remove it from pivot row collection
     int t, p_pivot = 0, r_pivot = pivotrows[ p_pivot ];
@@ -160,33 +161,40 @@ void gauss(double* soln, double* mx, int n)
     // add this pivot row to the solution-decoder
     solnrows[i] = r_pivot;
 
-    //if(biggest_pivot < 1e-10) continue;
+    if(fabs(biggest_pivot) < 1e-10) { rc = tlp_rc_encode(TLP_ZERO); goto fail; }
+
+    double divider = GMX( r_pivot, i );
+    if(fabs(divider) < 1e-10) { rc = tlp_rc_encode(TLP_INFINITY); goto fail; }
 
     // reduce non-pivot rows
     for(int r=0; r<r_pivot; r++)
-      for(int c=n; c>=i; c--) // count down RTL from rhs
-        GMX( r, c ) -= GMX( r_pivot, c ) * GMX( r, i ) / GMX( r_pivot, i );
-    for(int r=r_pivot +1; r<n; r++)
-      for(int c=n; c>=i; c--) // count down RTL from rhs
-        GMX( r, c ) -= GMX( r_pivot, c ) * GMX( r, i ) / GMX( r_pivot, i );
+      for(int c=rows; c>=i; c--) // count down RTL from rhs
+        GMX( r, c ) -= GMX( r_pivot, c ) * GMX( r, i ) / divider;
+    for(int r=r_pivot +1; r<rows; r++)
+      for(int c=rows; c>=i; c--) // count down RTL from rhs
+        GMX( r, c ) -= GMX( r_pivot, c ) * GMX( r, i ) / divider;
 
     // factor pivot row
-    for(int c=n; c>=i; c--) // count down RTL from rhs
+    for(int c=rows; c>=i; c--) // count down RTL from rhs
       GMX( r_pivot, c ) /= GMX( r_pivot, i );
   }
 
   // extract solution using indirect lookup through solution-decoder
-  for(int j=0; j<n; j++) soln[ j ] = GMX( solnrows[ j ], n);
+  for(int j=0; j<rows; j++) soln[ j ] = GMX( solnrows[ j ], rows);
 /*
-  for(int r=0; r<n; r++)
-    for(int c=0; c<n +1; c++)
+  for(int r=0; r<rows; r++)
+    for(int c=0; c<rows +1; c++)
       printf("%15.8f%c", GMX(r,c), (c<n) ? ' ' : '\n' );
   putchar('\n');
-  for(int j=0; j<n; j++) printf("%10.4f ", soln[j]);
+  for(int j=0; j<rows; j++) printf("%10.4f ", soln[j]);
   putchar('\n');
 */
+
+fail:
   free(pivotrows);
   free(solnrows);
+
+  return rc;
 }
 
 ///////////////
@@ -219,8 +227,81 @@ double determinant( double* mx, TLP_UINT size )
   return det;
 }
 
+///////////////
 
+TLP_RCCODE
+setup_min_qeq(
+  double** ppMX_new,
+  const double* pOBJMX, TLP_UINT iVariables,
+  const double* pEQMX, TLP_UINT iEQConstraints
+)
+{
+  // https://www.youtube.com/watch?v=gCs4YKiHIhg
+  // obj = 1 * x1 ^ 2 + 3 * x2 + 2 * x3 ^ 2
 
+  // mx[ # variables + # constraints , # constraints + # variables + rhs ]
+  //   L1        L2       x1    x2    x3     rhs
+  // -dG1/dx1  -dG2/dx1  dO/x1   0     0     rhs
+  // -dG1/dx2  -dG2/dx2    0    dO/x2  0     rhs
+  // -dG1/dx3  -dG2/dx3    0     0    dO/x3  rhs
+  //                      C11   C12   C13    rhs
+  //                      C21   C22   C23    rhs
+  // where L1, L2 are lagrangian lambdas
+  // solve for x1, x2, x3
+  TLP_RCCODE rc;
+
+  if( !ppMX_new ) return tlp_rc_encode_info(TLP_ASSERT, TLP_BADINDEX, __LINE__);
+  if( *ppMX_new ) return tlp_rc_encode_info(TLP_ASSERT, TLP_BADINDEX, __LINE__);
+  if( !pOBJMX || (iVariables<2) ) return tlp_rc_encode_info(TLP_ASSERT, TLP_BADINDEX, __LINE__);
+  if( (!pEQMX && iEQConstraints) || (iEQConstraints<2) ) return tlp_rc_encode_info(TLP_ASSERT, TLP_BADINDEX, __LINE__);
+
+  int iRows = iVariables + iEQConstraints;
+  int iCols = iVariables + iEQConstraints +1; // +1 for rhs
+
+  size_t iBytes = sizeof(double) * iRows * iCols;
+  double *pMX = *ppMX_new = (double*) aligned_alloc(16, iBytes);
+  memset(pMX, 0, iBytes);
+
+  double *pQOBJMX = (double*) &pOBJMX[ iVariables ];
+
+  // add lagragian coef columns
+  for(int c=0; c<iEQConstraints; ++c)
+  {
+    for(int v=0; v<iVariables; ++v)
+    {
+      pMX[v * iCols + c] = pEQMX[ (iVariables +1) * c + v ] * -1; // +1 for rhs, -1 because KKT
+    }
+  }
+
+  // add dO/xn diagonal
+  for(int v=0; v<iVariables; ++v)
+  {
+    int col = iEQConstraints +v;
+    int row = +v;
+    pMX[row * iCols + col] = pQOBJMX[ iVariables * v + v ] *2; // *2 since we're differentiating quadratic terms
+  }
+
+  // add linear terms to rhs
+  for(int v=0; v<iVariables; ++v)
+  {
+    int col = iVariables + iEQConstraints; // rhs col
+    int row = +v;
+    pMX[row * iCols + col] = pOBJMX[ v ] *-1; // *-1 because KKT
+  }
+
+  // add EQ constraints
+  for(int c=0; c<iEQConstraints; ++c)
+  {
+    for(int v=0; v<iVariables +1; ++v) // +1 to include rhs
+    {
+      int col = iEQConstraints +v;
+      int row = iVariables +c;
+      pMX[row * iCols + col] = pEQMX[ (iVariables +1) * c + v ]; // +1 for rhs
+    }
+  }
+
+  return tlp_rc_encode(TLP_OK);
+}
 
 
 

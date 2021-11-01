@@ -27,10 +27,20 @@ void elavhod_fin( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
 ///////////////
 
 int test_is_concave(double* vecX, double* mxCoef, TLP_UINT size);
-void gauss(double* soln, double* mx, int n);
+TLP_RCCODE gauss(double* soln, double* mx, int rows);
 
 ///////////////
 
 double determinant( double* mx, TLP_UINT size );
+
+///////////////
+
+TLP_RCCODE
+setup_min_qeq(
+  double** ppMX_new,
+  const double* pOBJMX, TLP_UINT iVariables,
+  const double* pEQMX, TLP_UINT iEQConstraints
+);
+
 
 #endif // _ANALYSIS_H_

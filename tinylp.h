@@ -42,13 +42,13 @@ const static char* tlp_messages[] =
 
 // for some errors, knowing the relevant row/col that caused the problem
 // is desired. so, we pack the status, row and col into a single 32bit
-// value: 14 bits for each of row and col and 4 bits for error code.
-// This makes 16384 rows/cols (-1 for bad index) and 16 error/status codes.
+// value: 13 bits for each of row and col and 6 bits for error code.
+// This makes 16382 rows/cols (16383 represents bad-index) and 64 error/status codes.
 
 enum
 {
-  TLP_RCBITS_IDX=14,
-  TLP_RCBITS_STAT=4,
+  TLP_RCBITS_IDX=13,
+  TLP_RCBITS_STAT=6,
   TLP_BADINDEX=((1<<(TLP_RCBITS_IDX+1))-1),
 };
 
@@ -98,6 +98,7 @@ struct MXInfo
   TLP_UINT cEnters, cLeaves;
 };
 
+void tlp_dump_mx( double* pMX, TLP_UINT rr, TLP_UINT cc );
 void tlp_dump_tableau( struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1 );
 void tlp_dump_active_cols( struct MXInfo* pInfo );
 void tlp_dump_active_soln( struct MXInfo* pInfo );

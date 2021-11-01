@@ -53,6 +53,16 @@ void tlp_rc_decode_info(TLP_RCCODE rc, TLP_UINT *e, TLP_UINT *r, TLP_UINT *c)
 
 ///////////////////////////////////////
 
+void tlp_dump_mx( double* pMX, TLP_UINT rr, TLP_UINT cc )
+{
+  for(int r = 0; r < rr; r++) {
+    for(int c = 0; c < cc; c++) {
+      printf(" %+10.4f", pMX[r * cc + c]);
+    }
+    putchar('\n');
+  }
+}
+
 void tlp_dump_tableau( struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1 )
 {
   TLP_UINT r, c;

@@ -123,7 +123,6 @@ int main()
     // obj = 1 * x1 ^ 2 + 3 * x2 + 2 * x3 ^ 2
 
     const char* vars[] = {"x1", "x2", "x3"};
-    //  x1 x2 x3 [ [ x1 x2 x3 ] [ x1 x2 x3 ] [ x1 x2 x3 ] ]
     double mxobj[] = {
       // linear part
       0., 3., 0,
@@ -138,30 +137,18 @@ int main()
       3.,  1.,  2., 7., // eqG2
     };
 
-    // mx[ # variables + # constraints , # constraints + # variables + rhs ]
-    //   L1        L2       x1    x2    x3     rhs
-    // -dG1/dx1  -dG2/dx1  dO/x1   0     0     rhs
-    // -dG1/dx2  -dG2/dx2    0    dO/x2  0     rhs
-    // -dG1/dx3  -dG2/dx3    0     0    dO/x3  rhs
-    //                      C11   C12   C13    rhs
-    //                      C21   C22   C23    rhs
-    // where L1, L2 are lagrangian lambdas
-    // solve for x1 and x2
-    // L1  L2  x1 x2 x3  rhs
-    double mxKKT[] = {
-      // lagrange coefs ?
-      -5., -3.,  2.,  0.,  0.,  0.,
-      +1., -1.,  0.,  0.,  0., -3.,
-      +3., -2.,  0.,  0.,  4.,  0.,
-      // constraints
-       0.,  0.,  5., -1., -3.,  2.,
-       0.,  0.,  3.,  1.,  2.,  7.,
-    };
-    double mxKKT_sol[] = { 0, 0, 0, 0, 0, };
-    double mxKKT_ver[] = { -0.7907, 2.2093, 1.3372, -0.4070, 1.6977 };
-    gauss( mxKKT_sol, mxKKT, 5 );
-    rc = tlp_mxequal(mxKKT_ver, mxKKT_sol, 1e-3, 5); CHECK;
-    printf("ok\n");
+    double *pmx = 0;
+    double mxsol[] = { 0, 0, 0, 0, 0, };
+    double mxver[] = { -0.7907, 2.2093, 1.3372, -0.4070, 1.6977 }; // L1 L2 x1 x2 x3
+
+    rc = setup_min_qeq( &pmx, mxobj, 3, mxEQ, 2 ); CHECK;
+    tlp_dump_mx( pmx, 5, 6 );
+    rc = gauss( mxsol, pmx, 5 );
+    printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
+    tlp_dump_mx( pmx, 5, 6 );
+    tlp_dump_mx( mxsol, 1, 5 );
+    rc = tlp_mxequal( mxver, mxsol, 1e-3, 5 ); CHECK;
+    free(pmx);
   }
 
   printf("----- LP maximize (degenerate/oscillating). line %d\n", __LINE__);
