@@ -24,6 +24,59 @@ int main()
   TLP_RCCODE rc;
   TLP_UINT e, r, c;
 
+  printf("----- SVM minimize. line %d\n", __LINE__);
+  {
+    // Patrick Winston mit opencourseware 6.034 2010
+    // [1] Y? = sign( W dot X? + B )
+    // [2] Yi ( W Xi + B ) -1 = 0, Xi in gutter constraint [???]
+    // [3] L = .5 || W || ^2 - sigma( ALPHAi ( Yi ( W dot Xi + B ) - 1 ) ), using lagrange's method
+    // [3.1] dL/dW = W - sigma( ALPHAi Yi Xi ), [3.1] = 0 at extreema
+    // [3.2] dL/dB = sigma( Xi Yi ), [3.2] = 0 at extreema
+    // [4] L = sigma( ALPHAi ) - .5 sigma sigma( ALPHAi ALPHAj Yi Yj ( Xi dot Xj ) )
+    // [4.1] L = sigma( ALPHAi ) - .5 sigma sigma( ALPHAi ALPHAj Yi Yj K( Xi, Xj ) ), using kernel K()
+    // kernels: linear, quadratic/conics (parabola, circle, hyperbola), polynomial, radial basis
+    // [5.1] ( Xi dot Xj + 1 ) ^ N
+    // [5.2] e ^ ( - || Xi - Xj || / SIGMA ), radial basis function
+
+    // CHRISTOPHER J.C. BURGES lucent 1998
+    // https://people.csail.mit.edu/dsontag/courses/ml14/notes/burges_SVM_tutorial.pdf
+    // [1] L = .5 || W || ^2 - sigma( ALPHAi Yi ( W dot Xi + B ) ) - sigma( ALPHAi ), vs [Winston 3.0]
+
+    // Jessica Noss mit opencourseware 6.034 2016
+    // Yi = { + , - }, is the classification of vector i
+    // ALPHAi >= 0, is the supportiveness of vector i to determine the boundry
+    // now solve for ALPHAi...
+    // [1.1] sigma( ALPHAi ) = sigma( ALPHAj ), where i are + support vectors and j are - support vectors
+    // [1.2] sigma( ALPHA+ ) = sigma( ALPHA- ), where ALPHA+ and ALPHA- are coefs for the + and - support vectors
+    // [1.3] sigma( ALPHAk ) = 0, when k are not support vectors (ie not in gutter)
+    // [2.1] sigma( ALPHAi Yi Xi ) = W
+    // [2.2] sigma( ALPHA+ X+ ) - simga( ALPHA- X- ) = W
+    // use 2.1 and 2.2 to solve for ALPHAi [do you need to know W?]
+    // insights about ALPHA values:
+    // [3.1] since 2 / || W || = width of W, small ALPHAs are associated with larger margins
+    // [3.2] in arrangements of non-equidistant support vectors, ALPHAs will be larger for closer support vectors of differing classes
+    // calculation of similarity:
+    // [4.1] Y? = sign( sigma( ALPHAi Yi Xi ) dot X? + B ), [sigma brackets correct?]
+    // [4.2] Y? = sign( sigma( ALPHAi Yi K( Xi, X? ) ) + B ), using kernel K()
+
+    // Zisserman ox.ac.uk C19 2015
+    // QLP nuts and bolts: https://www.robots.ox.ac.uk/~az/lectures/ml/lect2.pdf
+    // https://www.robots.ox.ac.uk/~az/lectures/ml/lect3.pdf
+    // [1.1] f(X) = ( W transpose X ) + B, is primal classification problem
+    // [1.2] f(X) = sigma( ALPHAi Yi ( Xi transpose X ) + B ), is dual classification problem, with Xi being support vectors
+    // [2] efficiency considerations
+    // [2.1] since W is D dimensional, techniques based upon ALPHA as variables can be more efficient with higher dimensions
+    // [2.2] techniques such as [1.1] or [1.2] use the ( X transpose X ) form that is kernel efficient
+    // [3] determines ALPHAi using the learning function
+    // [3.1] maximize sigma( ALPHA+ ) - .5 sigma( ALPHAj ALPHAk Yj Yk ( Xj transpose Xk ) ) s.t. 0 <= ALPHAi <= C and sigma( ALPHAi Yi ) = 0
+    // [3.2] minimize sigma( ALPHAi ALPHAj Yi Yj ( Xi transpose Xj ) ) s.t. Yi sigma( ALPHAj Yj ( Xj transpose Xi ) + B ) >= 1 forall i
+    // [4] test X class using [1.2]
+
+    // libsvm: https://www.csie.ntu.edu.tw/~cjlin/papers/quadworkset.pdf
+    // gpusvm: https://home.ttic.edu/~cotter/projects/gtsvm/
+    // Stochastic Batch Perceptron svm: https://home.ttic.edu/~cotter/projects/SBP/
+  }
+
   printf("----- QLP maximize. line %d\n", __LINE__);
   {
     // QLP maximization problem [H&L ed7 p684]
