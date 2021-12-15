@@ -32,8 +32,8 @@ int main()
     // [3] L = .5 || W || ^2 - sigma( ALPHAi ( Yi ( W dot Xi + B ) - 1 ) ), using lagrange's method
     // [3.1] dL/dW = W - sigma( ALPHAi Yi Xi ), [3.1] = 0 at extreema
     // [3.2] dL/dB = sigma( Xi Yi ), [3.2] = 0 at extreema
-    // [4] L = sigma( ALPHAi ) - .5 sigma sigma( ALPHAi ALPHAj Yi Yj ( Xi dot Xj ) )
-    // [4.1] L = sigma( ALPHAi ) - .5 sigma sigma( ALPHAi ALPHAj Yi Yj K( Xi, Xj ) ), using kernel K()
+    // [4] maximze L = sigma( ALPHAi ) - .5 sigma sigma( ALPHAi ALPHAj Yi Yj ( Xi dot Xj ) ) s.t. 0 <= ALPHAi <= C
+    // [4.1] maximize L = sigma( ALPHAi ) - .5 sigma sigma( ALPHAi ALPHAj Yi Yj K( Xi, Xj ) ), using kernel K()
     // kernels: linear, quadratic/conics (parabola, circle, hyperbola), polynomial, radial basis
     // [5.1] ( Xi dot Xj + 1 ) ^ N
     // [5.2] e ^ ( - || Xi - Xj || / SIGMA ), radial basis function
@@ -41,6 +41,7 @@ int main()
     // CHRISTOPHER J.C. BURGES lucent 1998
     // https://people.csail.mit.edu/dsontag/courses/ml14/notes/burges_SVM_tutorial.pdf
     // [1] L = .5 || W || ^2 - sigma( ALPHAi Yi ( W dot Xi + B ) ) - sigma( ALPHAi ), vs [Winston 3.0]
+    // [] [Winston 4.0] can use Wolfe
 
     // Jessica Noss mit opencourseware 6.034 2016
     // Yi = { + , - }, is the classification of vector i
@@ -49,7 +50,7 @@ int main()
     // [1.1] sigma( ALPHAi ) = sigma( ALPHAj ), where i are + support vectors and j are - support vectors
     // [1.2] sigma( ALPHA+ ) = sigma( ALPHA- ), where ALPHA+ and ALPHA- are coefs for the + and - support vectors
     // [1.3] sigma( ALPHAk ) = 0, when k are not support vectors (ie not in gutter)
-    // [2.1] sigma( ALPHAi Yi Xi ) = W
+    // [2.1] sigma( ALPHAi Yi Xi ) = W, over all support vectors i
     // [2.2] sigma( ALPHA+ X+ ) - simga( ALPHA- X- ) = W
     // use 2.1 and 2.2 to solve for ALPHAi [do you need to know W?]
     // insights about ALPHA values:
@@ -62,8 +63,8 @@ int main()
     // Zisserman ox.ac.uk C19 2015
     // QLP nuts and bolts: https://www.robots.ox.ac.uk/~az/lectures/ml/lect2.pdf
     // https://www.robots.ox.ac.uk/~az/lectures/ml/lect3.pdf
-    // [1.1] f(X) = ( W transpose X ) + B, is primal classification problem
-    // [1.2] f(X) = sigma( ALPHAi Yi ( Xi transpose X ) + B ), is dual classification problem, with Xi being support vectors
+    // [1.1] f(X) = ( W transpose X ) + B, is primal problem classification test
+    // [1.2] f(X) = sigma( ALPHAi Yi ( Xi transpose X ) + B ), is dual problem classification test, with Xi being support vectors
     // [2] efficiency considerations
     // [2.1] since W is D dimensional, techniques based upon ALPHA as variables can be more efficient with higher dimensions
     // [2.2] techniques such as [1.1] or [1.2] use the ( X transpose X ) form that is kernel efficient
@@ -72,9 +73,19 @@ int main()
     // [3.2] minimize sigma( ALPHAi ALPHAj Yi Yj ( Xi transpose Xj ) ) s.t. Yi sigma( ALPHAj Yj ( Xj transpose Xi ) + B ) >= 1 forall i
     // [4] test X class using [1.2]
 
-    // libsvm: https://www.csie.ntu.edu.tw/~cjlin/papers/quadworkset.pdf
+    // libsvm: Sequential Minimal Optimization (SMO) (Platt, 1998)
+    // https://www.csie.ntu.edu.tw/~cjlin/libsvm/
+    // https://www.csie.ntu.edu.tw/~cjlin/papers/guide/guide.pdf
+    // https://www.csie.ntu.edu.tw/~cjlin/papers/quadworkset.pdf
+    // SMO implementation: https://github.com/FazelYU/SVM-for-Genetic-Algorithm/blob/5f55190fb253f4a6f6c841b87cd1befbeda6ea7d/libsvm-master/svm.cpp#L375
+    // https://dsmilab.github.io/Yuh-Jye-Lee/assets/file/teaching/2017_machine_learning/SMO_algorithm.pdf
+    // https://www.csie.ntu.edu.tw/~cjlin/libsvm/
+    // https://github.com/cjlin1/libsvm
+
     // gpusvm: https://home.ttic.edu/~cotter/projects/gtsvm/
     // Stochastic Batch Perceptron svm: https://home.ttic.edu/~cotter/projects/SBP/
+    // https://github.com/LihO/SVMLightClassifier/blob/master/src/svm_learn.c
+    // https://github.com/FazelYU/SVM-for-Genetic-Algorithm/blob/main/libsvm-master/svm-toy/qt/svm-toy.cpp
   }
 
   printf("----- QLP maximize. line %d\n", __LINE__);
