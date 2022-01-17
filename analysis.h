@@ -8,23 +8,6 @@
 #include "tinylp.h"
 
 ///////////////
-// enter-leave-active-variable hash oscillation detector
-
-struct ELAVHODInfo
-{
-  double rhstol;
-  int iHistory;
-  TLP_UINT *var_entropy; // use entropy instead of var index number
-  uint64_t *history; // hash history of entering, leaving and active variables
-  double *rhs; // rhsides
-};
-
-void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t history, double rhstol );
-void elavhod_dump_history( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
-TLP_RCCODE elavhod_check( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
-void elavhod_fin( struct MXInfo *pInfo, struct ELAVHODInfo *htlod );
-
-///////////////
 
 int test_is_concave(double* vecX, double* mxCoef, TLP_UINT size);
 TLP_RCCODE gauss(double* soln, double* mx, int rows);
@@ -36,11 +19,12 @@ double determinant( double* mx, TLP_UINT size );
 ///////////////
 
 TLP_RCCODE
-setup_min_qeq(
+qeq_setup_min(
   double** ppMX_new,
   const double* pOBJMX, TLP_UINT iVariables,
   const double* pEQMX, TLP_UINT iEQConstraints
 );
+TLP_RCCODE qeq_fin( double** ppMX );
 
 
 #endif // _ANALYSIS_H_

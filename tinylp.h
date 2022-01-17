@@ -23,7 +23,7 @@ enum
   TLP_INFINITY=6,
   TLP_UNBOUNDED=7,
   TLP_AUGMENTED=8,
-  TLP_OSCILLATION=9, // see analysis module
+  TLP_OSCILLATION=9,
 };
 
 const static char* tlp_messages[] =
@@ -47,6 +47,7 @@ const static char* tlp_messages[] =
 
 enum
 {
+  TLP_OSC_HISTORY=20,
   TLP_RCBITS_IDX=13,
   TLP_RCBITS_STAT=6,
   TLP_BADINDEX=((1<<(TLP_RCBITS_IDX+1))-1),
@@ -96,6 +97,11 @@ struct MXInfo
   // status
   TLP_UINT iIter;
   TLP_UINT cEnters, cLeaves;
+  struct
+  {
+    uint64_t *pivHashArr;
+    double *rhsArr;
+  } osc;
 };
 
 void tlp_dump_mx( double* pMX, TLP_UINT rr, TLP_UINT cc );
@@ -103,6 +109,7 @@ void tlp_dump_tableau( struct MXInfo* pInfo, TLP_UINT r1, TLP_UINT c1 );
 void tlp_dump_active_cols( struct MXInfo* pInfo );
 void tlp_dump_active_soln( struct MXInfo* pInfo );
 void tlp_dump_current_soln( struct MXInfo* pInfo );
+void tlp_dump_osc_history( struct MXInfo *pInfo );
 
 TLP_RCCODE
 tlp_setup_max(

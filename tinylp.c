@@ -51,6 +51,31 @@ void tlp_rc_decode_info(TLP_RCCODE rc, TLP_UINT *e, TLP_UINT *r, TLP_UINT *c)
 
 #endif // DEBUG
 
+///////////////
+// oscillation detector hash alg
+
+// https://cessu.blogspot.com/2008/11/hashing-with-sse2-revisited-or-my-hash.html
+// kudos: Cessu
+static inline uint64_t tlp__hash_64x32(uint64_t h, uint32_t v)
+{
+  h ^= 2857720171ULL * v;
+  h ^= h >> 29;
+  h += h << 16;
+  h ^= h >> 21;
+  h += h << 32;
+  return h;
+}
+
+static inline uint32_t tlp__hash_32x16(uint32_t h, uint16_t v)
+{
+  h ^= 43691UL * v;
+  h ^= h >> 13;
+  h += h << 8;
+  h ^= h >> 10;
+  h += h << 16;
+  return h;
+}
+
 ///////////////////////////////////////
 
 void tlp_dump_mx( double* pMX, TLP_UINT rr, TLP_UINT cc )
@@ -146,6 +171,18 @@ void tlp_dump_active_soln( struct MXInfo* pInfo )
     }
   }
   printf(" = %+10.4f %s\n", TBMX(1, rhscol ), tlp_is_augmented( pInfo ) ? "(AUGMENTED)" : "");
+}
+
+void tlp_dump_osc_history( struct MXInfo *pInfo )
+{
+  for(int i=0; i<TLP_OSC_HISTORY; i++)
+  {
+    int j = ( pInfo->iIter + (TLP_OSC_HISTORY -i) ) % TLP_OSC_HISTORY;
+    printf(
+      "%6d  %08lX  %+10.4f\n",
+      pInfo->iIter - i, pInfo->osc.pivHashArr[ j ], pInfo->osc.rhsArr[ j ]
+    );
+  }
 }
 
 ///////////////////////////////////////
@@ -473,6 +510,23 @@ tlp_pivot(
   // todo: write a routine that will calculate sum( fabs( infeasibilities ) )
   // so that the caller can decide to terminate early if value <= epsilon.
 
+  // oscillation detection requires first requires hashing and storing the pivot-state
+  int oscSlot = pInfo->iIter % TLP_OSC_HISTORY;
+  uint64_t pivHash = 0;
+  pivHash = tlp__hash_64x32(pivHash, (uint32_t)pInfo->cEnters);
+  pivHash = tlp__hash_64x32(pivHash, (uint32_t)pInfo->cLeaves);
+  for(int i=0; i<pInfo->iActivevars; i++ )
+    pivHash = tlp__hash_64x32(pivHash, (uint32_t)pInfo->pActive[ i ]);
+  pInfo->osc.pivHashArr[ oscSlot ] = pivHash;
+  pInfo->osc.rhsArr[ oscSlot ] = TBMX(1, rhsCol );
+
+  // oscillation detection then requires state-scanning
+  for(int i=0; i<TLP_OSC_HISTORY; i++)
+    if( i != oscSlot )
+      if( pInfo->osc.pivHashArr[ oscSlot ] == pInfo->osc.pivHashArr[ i ] )
+        if( TLP_EQUAL( pInfo->osc.rhsArr[ oscSlot ], pInfo->osc.rhsArr[ i ] ) )
+          return tlp_rc_encode(TLP_OSCILLATION);
+
   return tlp_rc_encode(TLP_UNFINISHED);
 }
 
@@ -514,16 +568,22 @@ tlp_setup_max(
   pInfo->cEnters = TLP_BADINDEX;
   pInfo->cLeaves = TLP_BADINDEX;
 
-  unsigned long int iBytes;
+  size_t uBytes;
 
-  iBytes = sizeof(double) * pInfo->iRows * pInfo->iCols;
-  double *pMXData = aligned_alloc(16, iBytes);
-  memset(pMXData, 0, iBytes);
+  uBytes = sizeof(uint64_t) * TLP_OSC_HISTORY;
+  pInfo->osc.pivHashArr = (uint64_t*)aligned_alloc( 16, uBytes );
+  pInfo->osc.rhsArr = (double*)aligned_alloc( 16, uBytes );
+  memset(pInfo->osc.pivHashArr, 0, uBytes);
+  memset(pInfo->osc.rhsArr, 0, uBytes);
+
+  uBytes = sizeof(double) * pInfo->iRows * pInfo->iCols;
+  double *pMXData = aligned_alloc(16, uBytes);
+  memset(pMXData, 0, uBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iActivevars;
-  pInfo->pActive = (TLP_UINT *) malloc(iBytes);
-  memset(pInfo->pActive, 0, iBytes);
+  uBytes = sizeof(TLP_UINT) * pInfo->iActivevars;
+  pInfo->pActive = (TLP_UINT *) malloc(uBytes);
+  memset(pInfo->pActive, 0, uBytes);
 
   TLP_UINT c, r, v;
   TLP_UINT rhsCol = pInfo->iCols - 1; // -1 for RHS col
@@ -629,16 +689,22 @@ tlp_setup_max_qlp(
   pInfo->cEnters = TLP_BADINDEX;
   pInfo->cLeaves = TLP_BADINDEX;
 
-  unsigned long int iBytes;
+  size_t uBytes;
 
-  iBytes = sizeof(double) * pInfo->iRows * pInfo->iCols;
-  double *pMXData = aligned_alloc(16, iBytes);
-  memset(pMXData, 0, iBytes);
+  uBytes = sizeof(uint64_t) * TLP_OSC_HISTORY;
+  pInfo->osc.pivHashArr = (uint64_t*)aligned_alloc( 16, uBytes );
+  pInfo->osc.rhsArr = (double*)aligned_alloc( 16, uBytes );
+  memset(pInfo->osc.pivHashArr, 0, uBytes);
+  memset(pInfo->osc.rhsArr, 0, uBytes);
+
+  uBytes = sizeof(double) * pInfo->iRows * pInfo->iCols;
+  double *pMXData = aligned_alloc(16, uBytes);
+  memset(pMXData, 0, uBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iActivevars;
-  pInfo->pActive = (TLP_UINT *) malloc(iBytes);
-  memset(pInfo->pActive, 0, iBytes);
+  uBytes = sizeof(TLP_UINT) * pInfo->iActivevars;
+  pInfo->pActive = (TLP_UINT *) malloc(uBytes);
+  memset(pInfo->pActive, 0, uBytes);
 
   int iDefiningconst = pInfo->iConstraints -pInfo->iDefiningvars; // -iDefiningVars because QP problem treats Q rows as constr
   int rowZ = 1;
@@ -732,16 +798,22 @@ tlp_setup_min(
   pInfo->cEnters = TLP_BADINDEX;
   pInfo->cLeaves = TLP_BADINDEX;
 
-  unsigned long int iBytes;
+  size_t uBytes;
 
-  iBytes = sizeof(double) * pInfo->iRows * pInfo->iCols;
-  double *pMXData = aligned_alloc(16, iBytes);
-  memset(pMXData, 0, iBytes);
+  uBytes = sizeof(uint64_t) * TLP_OSC_HISTORY;
+  pInfo->osc.pivHashArr = (uint64_t*)aligned_alloc( 16, uBytes );
+  pInfo->osc.rhsArr = (double*)aligned_alloc( 16, uBytes );
+  memset(pInfo->osc.pivHashArr, 0, uBytes);
+  memset(pInfo->osc.rhsArr, 0, uBytes);
+
+  uBytes = sizeof(double) * pInfo->iRows * pInfo->iCols;
+  double *pMXData = aligned_alloc(16, uBytes);
+  memset(pMXData, 0, uBytes);
   pInfo->pMatrix = pMXData;
 
-  iBytes = sizeof(TLP_UINT) * pInfo->iActivevars;
-  pInfo->pActive = (TLP_UINT *) malloc(iBytes);
-  memset(pInfo->pActive, 0, iBytes);
+  uBytes = sizeof(TLP_UINT) * pInfo->iActivevars;
+  pInfo->pActive = (TLP_UINT *) malloc(uBytes);
+  memset(pInfo->pActive, 0, uBytes);
 
   TLP_UINT c, r, i, j;
   TLP_UINT rhsCol = pInfo->iCols - 1; // -1 for RHS col
@@ -828,6 +900,11 @@ tlp_fini(
     free( pInfo->pActive ); // tokens
   if( pInfo->pMatrix )
     free( pInfo->pMatrix ); // doubles
+  if( pInfo->osc.pivHashArr )
+    free( pInfo->osc.pivHashArr );
+  if( pInfo->osc.rhsArr )
+    free( pInfo->osc.rhsArr );
+
   memset( pInfo, 0, sizeof(struct MXInfo) );
 
   return tlp_rc_encode(TLP_OK);

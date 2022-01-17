@@ -19,7 +19,6 @@
 
 int main()
 {
-  struct ELAVHODInfo htlod;
   struct MXInfo mx2;
   TLP_RCCODE rc;
   TLP_UINT e, r, c;
@@ -86,6 +85,7 @@ int main()
     // Stochastic Batch Perceptron svm: https://home.ttic.edu/~cotter/projects/SBP/
     // https://github.com/LihO/SVMLightClassifier/blob/master/src/svm_learn.c
     // https://github.com/FazelYU/SVM-for-Genetic-Algorithm/blob/main/libsvm-master/svm-toy/qt/svm-toy.cpp
+    // http://pages.cs.wisc.edu/~swright/talks/sjw-complearning.pdf
   }
 
   printf("----- QLP maximize. line %d\n", __LINE__);
@@ -115,15 +115,11 @@ int main()
     rc = tlp_setup_max_qlp(&mx2, mxobj, 2, mxLE, 1, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-    elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
     while( 1 )
     {
       rc = tlp_pivot( &mx2 );
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
-
-      rc = elavhod_check( &mx2, &htlod );
-      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
 
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       tlp_dump_current_soln(&mx2); // for QP, result is always augmented
@@ -132,7 +128,7 @@ int main()
 
     //tlp_dump_tableau(&mx2, TLP_BADINDEX, TLP_BADINDEX);
     //rc = tlp_mxequal(mx_ver, mx_sol, 1e-3, 5); CHECK;
-    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
+    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) tlp_dump_osc_history(&mx2);
     rc = tlp_soln(&mx2, mxsol);
     printf("tlp_soln %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
 
@@ -142,7 +138,6 @@ int main()
     //double objval = tlp_eval_qlp(&mx2, mxobj); // TODO
 
     rc = tlp_fini(&mx2); CHECK;
-    elavhod_fin( &mx2, &htlod  );
   }
 
   printf("----- LP minimize. line %d\n", __LINE__);
@@ -205,14 +200,14 @@ int main()
     double mxsol[] = { 0, 0, 0, 0, 0, };
     double mxver[] = { -0.7907, 2.2093, 1.3372, -0.4070, 1.6977 }; // L1 L2 x1 x2 x3
 
-    rc = setup_min_qeq( &pmx, mxobj, 3, mxEQ, 2 ); CHECK;
+    rc = qeq_setup_min( &pmx, mxobj, 3, mxEQ, 2 ); CHECK;
     tlp_dump_mx( pmx, 5, 6 );
     rc = gauss( mxsol, pmx, 5 );
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     tlp_dump_mx( pmx, 5, 6 );
     tlp_dump_mx( mxsol, 1, 5 );
     rc = tlp_mxequal( mxver, mxsol, 1e-3, 5 ); CHECK;
-    free(pmx);
+    rc = qeq_fin(&pmx);
   }
 
   printf("----- LP maximize (degenerate/oscillating). line %d\n", __LINE__);
@@ -247,25 +242,20 @@ int main()
     rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 3, mxEQ, 0, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-    elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
     while( 1 )
     {
       rc = tlp_pivot( &mx2 );
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
 
-      rc = elavhod_check( &mx2, &htlod );
-      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
-
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
-    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
+    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) tlp_dump_osc_history(&mx2);
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
-    elavhod_fin( &mx2, &htlod  );
   }
 
   printf("----- LP maximize (maximize le and eq constraints). line %d\n", __LINE__);
@@ -295,25 +285,20 @@ int main()
     rc = tlp_setup_max(&mx2, mxobj, 2, mxLE, 2, mxEQ, 1, (const char**)&vars); CHECK;
     printf("%s\n", mx2.bMaximize ? "Maximize" : "Minimize");
     tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
-    elavhod_setup( &mx2, &htlod, 10, 1.0E-8 );
     while( 1 )
     {
       rc = tlp_pivot( &mx2 );
       if( tlp_rc_decode(rc) != TLP_UNFINISHED ) break;
       printf("iteration %d: column %d leaves %d enters \n", mx2.iIter, mx2.cLeaves, mx2.cEnters);
 
-      rc = elavhod_check( &mx2, &htlod );
-      if( tlp_rc_decode(rc) == TLP_OSCILLATION ) break;
-
       tlp_dump_tableau( &mx2, TLP_BADINDEX, TLP_BADINDEX );
       tlp_dump_current_soln(&mx2);
     }
     printf("status: %s\n", tlp_messages[ tlp_rc_decode(rc) ] );
-    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) elavhod_dump_history(&mx2, &htlod);
+    if( tlp_rc_decode(rc) == TLP_OSCILLATION ) tlp_dump_osc_history(&mx2);
     if( !(rc = tlp_soln(&mx2, mxsol)) ) printf("%s\n", tlp_messages[ tlp_rc_decode(rc) ] );
     rc = tlp_mxequal(mxsol, mxver, mx2.fZero, sizeof(mxsol) / sizeof(double)); CHECK;
     rc = tlp_fini(&mx2); CHECK;
-    elavhod_fin( &mx2, &htlod  );
   }
 
   printf("----- LP maximize. line %d\n", __LINE__);

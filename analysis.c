@@ -11,119 +11,6 @@
 
 #include "analysis.h"
 
-#define EQUAL(a,b,d) (fabs((a)-(b)) < (d))
-#define ALMOSTZERO(a,d) (fabs(a) < (d))
-
-#define TBMX(_r, _c ) ( pInfo->pMatrix[ (_r) * pInfo->iCols + (_c) ] )
-
-///////////////
-// elavh oscillation detector
-
-// https://cessu.blogspot.com/2008/11/hashing-with-sse2-revisited-or-my-hash.html
-// kudos: Cessu
-static inline uint64_t elavhod__hash_64x32(uint64_t h, uint32_t v)
-{
-  h ^= 2857720171ULL * v;
-  h ^= h >> 29;
-  h += h << 16;
-  h ^= h >> 21;
-  h += h << 32;
-  return h;
-}
-
-static inline uint32_t elavhod__hash_32x16(uint32_t h, uint16_t v)
-{
-  h ^= 43691UL * v;
-  h ^= h >> 13;
-  h += h << 8;
-  h ^= h >> 10;
-  h += h << 16;
-  return h;
-}
-
-void elavhod_setup( struct MXInfo *pInfo, struct ELAVHODInfo *htlod, uint8_t history, double rhstol )
-{
-  memset(htlod, 0, sizeof(struct ELAVHODInfo));
-
-  htlod->rhstol = rhstol;
-  htlod->iHistory = history;
-
-  htlod->history = (uint64_t*)malloc( sizeof(uint64_t) * htlod->iHistory );
-  memset(htlod->history, 0, sizeof(uint64_t) * htlod->iHistory);
-
-  htlod->rhs = (double*)malloc( sizeof(double) * htlod->iHistory );
-  memset(htlod->rhs, 0, sizeof(double) * htlod->iHistory);
-
-  // https://www.cyrill-gremaud.ch/howto-generate-secure-random-number-on-nix/
-  // kudos: Bennet Yee
-  int fd;
-
-  if( (fd = open("/dev/urandom", O_RDONLY)) == -1 )
-    perror("Error: impossible to read randomness source\n");
-
-  size_t uVarBytes = sizeof(TLP_UINT) * pInfo->iCols;
-  htlod->var_entropy = (TLP_UINT*)malloc( uVarBytes );
-  if( read(fd, htlod->var_entropy, uVarBytes) != uVarBytes )
-    perror("read() failed\n");
-
-  close(fd);
-}
-
-void elavhod_dump_history( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
-{
-  for(int i=0; i<htlod->iHistory; i++)
-  {
-    int j = ( pInfo->iIter + (htlod->iHistory -i) ) % htlod->iHistory;
-    printf(
-      "%6d  %08lX  %+10.4f\n",
-      pInfo->iIter - i, htlod->history[ j ], htlod->rhs[ j ]
-    );
-  }
-}
-
-static void elavhod_update( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
-{
-  uint64_t elavh = 0;
-  elavh = elavhod__hash_64x32(elavh, (uint32_t)pInfo->cEnters);
-  elavh = elavhod__hash_64x32(elavh, (uint32_t)pInfo->cLeaves);
-
-  for(int i=0; i<pInfo->iActivevars; i++ )
-    elavh = elavhod__hash_64x32(elavh, (uint32_t)pInfo->pActive[ i ]);
-
-  TLP_UINT rhscol = pInfo->iCols - 1;
-  double rhs = TBMX(1, rhscol );
-
-  int j = pInfo->iIter % htlod->iHistory;
-  htlod->history[ j ] = elavh;
-  htlod->rhs[ j ] = rhs;
-}
-
-static int elavhod_detect( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
-{
-  int j = pInfo->iIter % htlod->iHistory;
-  for(int i=0; i<htlod->iHistory; i++)
-    if( i != j )
-      if( htlod->history[ j ] == htlod->history[ i ] )
-        if( EQUAL( htlod->rhs[ j ], htlod->rhs[ i ], htlod->rhstol ) )
-          return 1;
-
-  return 0;
-}
-
-TLP_RCCODE elavhod_check( struct MXInfo *pInfo, struct ELAVHODInfo *htlod )
-{
-  elavhod_update(pInfo, htlod);
-  if( elavhod_detect(pInfo, htlod) ) return tlp_rc_encode(TLP_OSCILLATION);
-  return tlp_rc_encode(TLP_OK);
-}
-
-void elavhod_fin( struct MXInfo *pInfo, struct ELAVHODInfo *htlod  )
-{
-  free(htlod->var_entropy);
-  free(htlod->history);
-  free(htlod->rhs);
-}
-
 ///////////////
 
 int test_is_concave(double* vecX, double* mxCoef, TLP_UINT size)
@@ -230,7 +117,7 @@ double determinant( double* mx, TLP_UINT size )
 ///////////////
 
 TLP_RCCODE
-setup_min_qeq(
+qeq_setup_min(
   double** ppMX_new,
   const double* pOBJMX, TLP_UINT iVariables,
   const double* pEQMX, TLP_UINT iEQConstraints
@@ -303,7 +190,11 @@ setup_min_qeq(
   return tlp_rc_encode(TLP_OK);
 }
 
-
+TLP_RCCODE qeq_fin( double** ppMX )
+{
+  free(*ppMX);
+  *ppMX = 0;
+}
 
 
 
