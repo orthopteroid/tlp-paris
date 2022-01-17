@@ -362,10 +362,10 @@ tlp_rowLargestNegCoef(
   {
     TLP_UINT var = c -1; // -1 converts from col to var
 
-/*    // trivially exclude variables that are already active, review: broken!
-    for(TLP_UINT i=0; i<pInfo->iActive; i++ )
-      if( (pInfo->pActiveVariables[i] == var) )
-        goto skip_variable_and_check_another; */ // already in active set
+    // trivially exclude variables that are already active
+    for(TLP_UINT i=0; i<pInfo->iActivevars; i++ )
+      if( (pInfo->pActive[i] -1) == var ) // -1 converts col to var
+        goto skip_variable_and_check_another; // already in active set
 
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
     if( (v >= *pV) ) goto skip_variable_and_check_another; // not smaller
@@ -381,7 +381,8 @@ skip_variable_and_check_another: ;
 
 // check specified row for most -ve coef
 // per H&L's restricted entry rule p687 s13.7 7th ed. for QP
-// very horrorific nested looping in here...
+// very horrorific nested looping in here
+// review: reimplement using multiscan buffer or LINQish-streaming technique?
 static TLP_INLINE TLP_RCCODE
 tlp_rowLargestNegCoef_QPRule(
   struct MXInfo* pInfo,
@@ -409,10 +410,10 @@ tlp_rowLargestNegCoef_QPRule(
   {
     TLP_UINT var = c -1; // -1 converts from col to var
 
-/*    // trivially exclude variables that are already active
-    for(TLP_UINT i = 0; i<pInfo->iActive; i++ )
-      if( (pInfo->pActiveVariables[i] == var) )
-        goto skip_variable_and_check_another; */ // already in active set
+    // trivially exclude variables that are already active
+    for(TLP_UINT i = 0; i<pInfo->iActivevars; i++ )
+      if( (pInfo->pActive[i] -1) == var ) // -1 converts col to var
+        goto skip_variable_and_check_another; // already in active set
 
     double v = pInfo->pMatrix[ r * pInfo->iCols + c];
     if( (v >= *pV) ) goto skip_variable_and_check_another; // not smaller
@@ -428,7 +429,7 @@ tlp_rowLargestNegCoef_QPRule(
     // since var is group1 or group2, determine if it's complement is already active
     for(TLP_UINT i=0; i<n; i++ )
     {
-      TLP_UINT a = var, b = pInfo->pActive[i] -1; // -1 skips col Z
+      TLP_UINT a = var, b = pInfo->pActive[i] -1; // -1 converts col to var
       if( b > a )
       {
         if( b < 2 * n ) continue; // max not in group2, check another active variable
